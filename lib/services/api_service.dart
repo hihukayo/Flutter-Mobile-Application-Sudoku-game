@@ -21,6 +21,7 @@ class ApiService {
     return 'http://localhost:8080/api';
   }
 
+  // ---- 注册 ----
   static Future<Map<String, dynamic>> register({
     required String username,
     required String phone,
@@ -29,15 +30,12 @@ class ApiService {
     final res = await http.post(
       Uri.parse('$baseUrl/register'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'phone': phone,
-        'password': password,
-      }),
+      body: jsonEncode({'username': username, 'phone': phone, 'password': password}),
     );
     return jsonDecode(res.body);
   }
 
+  // ---- 登录 ----
   static Future<Map<String, dynamic>> login({
     required String account,
     required String password,
@@ -46,6 +44,48 @@ class ApiService {
       Uri.parse('$baseUrl/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'account': account, 'password': password}),
+    );
+    return jsonDecode(res.body);
+  }
+
+  // ---- 修改用户名 ----
+  static Future<Map<String, dynamic>> updateUsername({
+    required String username,
+    required String newUsername,
+    required String password,
+  }) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/user/update-username'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'newUsername': newUsername, 'password': password}),
+    );
+    return jsonDecode(res.body);
+  }
+
+  // ---- 修改密码 ----
+  static Future<Map<String, dynamic>> updatePassword({
+    required String username,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/user/update-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'oldPassword': oldPassword, 'newPassword': newPassword}),
+    );
+    return jsonDecode(res.body);
+  }
+
+  // ---- 修改手机号 ----
+  static Future<Map<String, dynamic>> updatePhone({
+    required String username,
+    required String newPhone,
+    required String password,
+  }) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/user/update-phone'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'newPhone': newPhone, 'password': password}),
     );
     return jsonDecode(res.body);
   }

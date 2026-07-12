@@ -122,6 +122,117 @@ final _router = Router()
       return Response.ok(jsonEncode(_fail('服务器错误：$e')),
           headers: {'Content-Type': 'application/json'});
     }
+  })
+
+  // PUT /api/user/update-username
+  ..put('/api/user/update-username', (Request req) async {
+    try {
+      final body = jsonDecode(await req.readAsString());
+      final username = body['username']?.toString().trim();
+      final newUsername = body['newUsername']?.toString().trim();
+      final password = body['password']?.toString();
+
+      if (username == null || newUsername == null || password == null) {
+        return Response.ok(jsonEncode(_fail('参数不完整')), headers: {'Content-Type': 'application/json'});
+      }
+
+      // 验证密码
+      final check = await _pool.execute(
+        'SELECT password FROM users WHERE username = :username',
+        {'username': username},
+      );
+      if (check.rows.isEmpty || check.rows.first.colAt(0) != _hashPassword(password)) {
+        return Response.ok(jsonEncode(_fail('密码验证失败')), headers: {'Content-Type': 'application/json'});
+      }
+
+      // 检查新用户名是否已被占用
+      final dup = await _pool.execute(
+        'SELECT username FROM users WHERE username = :newUsername AND username != :username',
+        {'newUsername': newUsername, 'username': username},
+      );
+      if (dup.rows.isNotEmpty) {
+        return Response.ok(jsonEncode(_fail('该用户名已被使用')), headers: {'Content-Type': 'application/json'});
+      }
+
+      await _pool.execute(
+        'UPDATE users SET username = :newUsername WHERE username = :username',
+        {'newUsername': newUsername, 'username': username},
+      );
+      return Response.ok(jsonEncode(_ok('用户名已更新')), headers: {'Content-Type': 'application/json'});
+    } catch (e) {
+      return Response.ok(jsonEncode(_fail('服务器错误：$e')), headers: {'Content-Type': 'application/json'});
+    }
+  })
+
+  // PUT /api/user/update-password
+  ..put('/api/user/update-password', (Request req) async {
+    try {
+      final body = jsonDecode(await req.readAsString());
+      final username = body['username']?.toString().trim();
+      final oldPassword = body['oldPassword']?.toString();
+      final newPassword = body['newPassword']?.toString();
+
+      if (username == null || oldPassword == null || newPassword == null) {
+        return Response.ok(jsonEncode(_fail('参数不完整')), headers: {'Content-Type': 'application/json'});
+      }
+      if (newPassword.length < 6) {
+        return Response.ok(jsonEncode(_fail('新密码至少 6 位')), headers: {'Content-Type': 'application/json'});
+      }
+
+      final check = await _pool.execute(
+        'SELECT password FROM users WHERE username = :username',
+        {'username': username},
+      );
+      if (check.rows.isEmpty || check.rows.first.colAt(0) != _hashPassword(oldPassword)) {
+        return Response.ok(jsonEncode(_fail('原密码错误')), headers: {'Content-Type': 'application/json'});
+      }
+
+      await _pool.execute(
+        'UPDATE users SET password = :password WHERE username = :username',
+        {'password': _hashPassword(newPassword), 'username': username},
+      );
+      return Response.ok(jsonEncode(_ok('密码已更新')), headers: {'Content-Type': 'application/json'});
+    } catch (e) {
+      return Response.ok(jsonEncode(_fail('服务器错误：$e')), headers: {'Content-Type': 'application/json'});
+    }
+  })
+
+  // PUT /api/user/update-phone
+  ..put('/api/user/update-phone', (Request req) async {
+    try {
+      final body = jsonDecode(await req.readAsString());
+      final username = body['username']?.toString().trim();
+      final newPhone = body['newPhone']?.toString().trim();
+      final password = body['password']?.toString();
+
+      if (username == null || newPhone == null || password == null) {
+        return Response.ok(jsonEncode(_fail('参数不完整')), headers: {'Content-Type': 'application/json'});
+      }
+
+      final check = await _pool.execute(
+        'SELECT password FROM users WHERE username = :username',
+        {'username': username},
+      );
+      if (check.rows.isEmpty || check.rows.first.colAt(0) != _hashPassword(password)) {
+        return Response.ok(jsonEncode(_fail('密码验证失败')), headers: {'Content-Type': 'application/json'});
+      }
+
+      final dup = await _pool.execute(
+        'SELECT phone FROM users WHERE phone = :newPhone AND username != :username',
+        {'newPhone': newPhone, 'username': username},
+      );
+      if (dup.rows.isNotEmpty) {
+        return Response.ok(jsonEncode(_fail('该手机号已被使用')), headers: {'Content-Type': 'application/json'});
+      }
+
+      await _pool.execute(
+        'UPDATE users SET phone = :newPhone WHERE username = :username',
+        {'newPhone': newPhone, 'username': username},
+      );
+      return Response.ok(jsonEncode(_ok('手机号已更新')), headers: {'Content-Type': 'application/json'});
+    } catch (e) {
+      return Response.ok(jsonEncode(_fail('服务器错误：$e')), headers: {'Content-Type': 'application/json'});
+    }
   });
 
 // ---- CORS 中间件 ----
