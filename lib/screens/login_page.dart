@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import 'register_page.dart';
 import 'home_page.dart';
@@ -29,6 +30,9 @@ class _LoginPageState extends State<LoginPage> {
       final res = await ApiService.login(account: account, password: password);
       if (!mounted) return;
       if (res['success']) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('login_username', res['username'] ?? '');
+        await prefs.setString('login_phone', res['phone'] ?? '');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => HomePage(
