@@ -11,26 +11,30 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _phoneController = TextEditingController();
+  final _accountController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
+  bool _obscurePassword = true;
 
   void _login() async {
-    final phone = _phoneController.text.trim();
+    final account = _accountController.text.trim();
     final password = _passwordController.text.trim();
-    if (phone.isEmpty || password.isEmpty) {
-      _showMsg('请输入手机号和密码');
+    if (account.isEmpty || password.isEmpty) {
+      _showMsg('请输入账号（用户名/手机号）和密码');
       return;
     }
 
     setState(() => _loading = true);
     try {
-      final res = await ApiService.login(phone: phone, password: password);
+      final res = await ApiService.login(account: account, password: password);
       if (!mounted) return;
       if (res['success']) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => HomePage(phone: phone)),
+          MaterialPageRoute(builder: (_) => HomePage(
+            username: res['username'] ?? '',
+            phone: res['phone'] ?? '',
+          )),
         );
       } else {
         _showMsg(res['message'] ?? '登录失败');
@@ -48,7 +52,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _accountController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -71,22 +75,25 @@ class _LoginPageState extends State<LoginPage> {
                 Text('珍珠棋', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                 const SizedBox(height: 40),
                 TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
+                  controller: _accountController,
                   decoration: const InputDecoration(
-                    labelText: '手机号',
-                    prefixIcon: Icon(Icons.phone),
+                    labelText: '用户名 / 手机号',
+                    prefixIcon: Icon(Icons.person),
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
                     labelText: '密码',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

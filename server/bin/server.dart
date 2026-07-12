@@ -30,9 +30,14 @@ final _router = Router()
   ..post('/api/register', (Request req) async {
     try {
       final body = jsonDecode(await req.readAsString());
+      final username = body['username']?.toString().trim();
       final phone = body['phone']?.toString().trim();
       final password = body['password']?.toString();
 
+      if (username == null || username.isEmpty) {
+        return Response.ok(jsonEncode(_fail('用户名不能为空')),
+            headers: {'Content-Type': 'application/json'});
+      }
       if (phone == null || phone.isEmpty) {
         return Response.ok(jsonEncode(_fail('手机号不能为空')),
             headers: {'Content-Type': 'application/json'});
@@ -42,18 +47,30 @@ final _router = Router()
             headers: {'Content-Type': 'application/json'});
       }
 
-      final check = await _pool.execute(
-        'SELECT id FROM users WHERE phone = :phone',
+      // 检查用户名是否已存在
+      final checkUser = await _pool.execute(
+        'SELECT username FROM users WHERE username = :username',
+        {'username': username},
+      );
+      if (checkUser.rows.isNotEmpty) {
+        return Response.ok(jsonEncode(_fail('该用户名已被注册')),
+            headers: {'Content-Type': 'application/json'});
+      }
+
+      // 检查手机号是否已注册
+      final checkPhone = await _pool.execute(
+        'SELECT phone FROM users WHERE phone = :phone',
         {'phone': phone},
       );
-      if (check.rows.isNotEmpty) {
+      if (checkPhone.rows.isNotEmpty) {
         return Response.ok(jsonEncode(_fail('该手机号已注册')),
             headers: {'Content-Type': 'application/json'});
       }
 
+      // 插入新用户（主键为 username + phone）
       await _pool.execute(
-        'INSERT INTO users (phone, password) VALUES (:phone, :password)',
-        {'phone': phone, 'password': _hashPassword(password)},
+        'INSERT INTO users (username, phone, password) VALUES (:username, :phone, :password)',
+        {'username': username, 'phone': phone, 'password': _hashPassword(password)},
       );
 
       return Response.ok(jsonEncode(_ok('注册成功')),
@@ -68,32 +85,38 @@ final _router = Router()
   ..post('/api/login', (Request req) async {
     try {
       final body = jsonDecode(await req.readAsString());
-      final phone = body['phone']?.toString().trim();
+      final account = body['account']?.toString().trim();
       final password = body['password']?.toString();
 
-      if (phone == null || phone.isEmpty || password == null || password.isEmpty) {
-        return Response.ok(jsonEncode(_fail('请输入手机号和密码')),
+      if (account == null || account.isEmpty || password == null || password.isEmpty) {
+        return Response.ok(jsonEncode(_fail('请输入账号（用户名/手机号）和密码')),
             headers: {'Content-Type': 'application/json'});
       }
 
+      // 支持用户名或手机号登录
       final result = await _pool.execute(
-        'SELECT id, password FROM users WHERE phone = :phone',
-        {'phone': phone},
+        'SELECT username, phone, password FROM users WHERE username = :account OR phone = :account',
+        {'account': account},
       );
       if (result.rows.isEmpty) {
-        return Response.ok(jsonEncode(_fail('手机号未注册')),
+        return Response.ok(jsonEncode(_fail('账号或密码错误')),
             headers: {'Content-Type': 'application/json'});
       }
 
       final row = result.rows.first;
-      final storedHash = row.colAt(1)!;
+      final storedHash = row.colAt(2)!;
       if (storedHash != _hashPassword(password)) {
-        return Response.ok(jsonEncode(_fail('密码错误')),
+        return Response.ok(jsonEncode(_fail('账号或密码错误')),
             headers: {'Content-Type': 'application/json'});
       }
 
       return Response.ok(
-          jsonEncode({'success': true, 'message': '登录成功', 'user_id': row.colAt(0)}),
+          jsonEncode({
+            'success': true,
+            'message': '登录成功',
+            'username': row.colAt(0),
+            'phone': row.colAt(1),
+          }),
           headers: {'Content-Type': 'application/json'});
     } catch (e) {
       return Response.ok(jsonEncode(_fail('服务器错误：$e')),
@@ -105,10 +128,8 @@ final _router = Router()
 Middleware corsMiddleware() {
   return (Handler innerHandler) {
     return (Request req) async {
-      // 预检请求直接返回 200
       if (req.method == 'OPTIONS') {
-        return Response(200,
-            headers: _corsHeaders);
+        return Response(200, headers: _corsHeaders);
       }
       final res = await innerHandler(req);
       return res.change(headers: _corsHeaders);
@@ -134,7 +155,7 @@ void main() async {
 
   final handler = const Pipeline()
       .addMiddleware(corsMiddleware())
-      .addHandler(_router);
+      .addHandler(_router.call);
   final server = await io.serve(handler, '0.0.0.0', 8080);
   print('服务器已启动：http://localhost:${server.port}');
   print('接口列表：');

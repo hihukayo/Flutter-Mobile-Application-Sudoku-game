@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'login_page.dart';
 
 class HomePage extends StatelessWidget {
+  final String username;
   final String phone;
-  const HomePage({super.key, required this.phone});
+  const HomePage({super.key, required this.username, required this.phone});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +24,7 @@ class HomePage extends StatelessWidget {
         ],
       ),
       body: Center(
-        child: Text('欢迎！\n手机号：$phone', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
+        child: Text('欢迎，$username！\n手机号：$phone', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
       ),
     );
   }
