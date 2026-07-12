@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_page.dart';
 import 'settings_page.dart';
@@ -40,12 +41,30 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final xfile = await picker.pickImage(source: ImageSource.gallery, maxWidth: 256, maxHeight: 256);
-    if (xfile != null) {
-      final bytes = await xfile.readAsBytes();
-      setState(() => _avatarBytes = bytes);
-      _saveAvatar(bytes);
+    final xfile = await picker.pickImage(source: ImageSource.gallery);
+    if (xfile == null) return;
+
+    // 尝试裁剪（移动端原生支持，Web 可能不支持）
+    Uint8List? bytes;
+    try {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: xfile.path,
+        compressFormat: ImageCompressFormat.jpg,
+        uiSettings: [
+          AndroidUiSettings(toolbarTitle: '调整头像', statusBarColor: Colors.deepPurple),
+          IOSUiSettings(title: '调整头像'),
+        ],
+      );
+      if (cropped != null) {
+        bytes = await cropped.readAsBytes();
+      }
+    } catch (_) {
+      // Web 或不支持裁剪时直接使用原图
     }
+
+    bytes ??= await xfile.readAsBytes();
+    setState(() => _avatarBytes = bytes);
+    _saveAvatar(bytes!);
   }
 
   @override
