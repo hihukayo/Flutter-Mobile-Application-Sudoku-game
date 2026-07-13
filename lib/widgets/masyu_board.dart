@@ -21,6 +21,7 @@ class _MasyuBoardState extends State<MasyuBoard> {
   int _dragMode = 0; // 0=未知, 1=画线, -1=擦线
   final Set<_EdgeKey> _previewEdges = {};
   bool _loopComplete = false;
+  Offset? _dragTail; // 鼠标当前位置（用于画"橡皮筋"尾巴）
 
   void _calcLayout(BoxConstraints c) {
     final p = widget.puzzle;
@@ -118,6 +119,7 @@ class _MasyuBoardState extends State<MasyuBoard> {
   void _onDown(Offset pos) {
     final d = _posToDot(pos);
     if (d == null) return;
+    _dragTail = null;
     _dragPath.clear(); _dragPath.add(d);
     _dragMode = 0; _previewEdges.clear(); _loopComplete = false; setState(() {});
   }
@@ -125,12 +127,50 @@ class _MasyuBoardState extends State<MasyuBoard> {
   void _onMove(Offset pos) {
     if (_dragPath.isEmpty) return;
     final dot = _posToDot(pos);
-    if (dot == null) return;
+    if (dot == null) {
+      // 鼠标在两个 dot 之间 → 通过位置估算方向，更新预览
+      if (_dragPath.isNotEmpty && _dragMode == 0 && _dragPath.length >= 2) {
+        // 已经检测过模式则不需再处理
+      }
+      return;
+    }
     if (_dotsMatch(dot, _dragPath.last)) return;
     if (_loopComplete) _loopComplete = false;
 
-    final dr = dot[0] - _dragPath.last[0], dc = dot[1] - _dragPath.last[1];
-    if (dr != 0 && dc != 0) return; // 禁止斜向
+    int dr = dot[0] - _dragPath.last[0], dc = dot[1] - _dragPath.last[1];
+    if (dr != 0 && dc != 0) {
+      // 斜向移动 → 取绝对值较大的方向（优先主导方向）
+      if (dr.abs() > dc.abs()) dc = 0; else dr = 0;
+      // 修正后的目标格
+      final corrected = [_dragPath.last[0] + dr, _dragPath.last[1] + dc];
+      if (corrected[0] < 0 || corrected[0] > widget.puzzle.rows || corrected[1] < 0 || corrected[1] > widget.puzzle.cols) return;
+      // 检查修正后的格是否已在路径中
+      for (int i = 0; i < _dragPath.length; i++) {
+        if (_dotsMatch(_dragPath[i], corrected)) {
+          if (i == 0 && _dragPath.length >= 3) {
+            _loopComplete = true;
+            _rebuildPreview(); setState(() {}); return;
+          }
+          _dragPath.removeRange(i + 1, _dragPath.length);
+          _rebuildPreview(); setState(() {}); return;
+        }
+      }
+      // 走自动补全
+      for (final d in _fill(_dragPath.last, corrected)) {
+        bool skip = false;
+        for (int i = 0; i < _dragPath.length - 1; i++) {
+          if (_dotsMatch(_dragPath[i], d)) {
+            _dragPath.removeRange(i + 1, _dragPath.length);
+            _dragPath.add(d);
+            skip = true; break;
+          }
+        }
+        if (skip) break;
+        if (_dotsMatch(_dragPath.last, d)) continue;
+        _dragPath.add(d);
+      }
+      _rebuildPreview(); setState(() {}); return;
+    }
 
     // 检查回到旧 dot → 截断 or 闭环
     for (int i = 0; i < _dragPath.length - 1; i++) {
@@ -167,10 +207,24 @@ class _MasyuBoardState extends State<MasyuBoard> {
       if (e != null) _dragMode = _isLine(e) ? -1 : 1;
     }
 
+    // 保存当前鼠标位置用于绘制"尾巴"
+    if (_dragPath.isNotEmpty) {
+      final last = _dragPath.last;
+      final bx = pos.dx - _offsetX, by = pos.dy - _offsetY;
+      final col = ((bx - _spacing) / _spacing).round();
+      final row = ((by - _spacing) / _spacing).round();
+      // 只在鼠标与最后dot同行或同列时才画尾巴
+      if (row == last[0] || col == last[1]) {
+        _dragTail = pos;
+      } else {
+        _dragTail = null;
+      }
+    }
     _rebuildPreview(); setState(() {});
   }
 
   void _onUp(Offset pos) {
+    _dragTail = null;
     if (_dragPath.length == 1) {
       _toggleNearestEdge(_dragPath[0]);
     } else if (_dragMode != 0 && _previewEdges.isNotEmpty) {
@@ -193,7 +247,8 @@ class _MasyuBoardState extends State<MasyuBoard> {
           size: Size(c.maxWidth, c.maxHeight),
           painter: _MasyuPainter(puzzle: widget.puzzle, spacing: _spacing,
               offsetX: _offsetX, offsetY: _offsetY,
-              preview: _previewEdges, drawMode: _dragMode),
+              preview: _previewEdges, drawMode: _dragMode,
+              dragTail: _dragTail),
         ),
       );
     });
@@ -209,10 +264,12 @@ class _MasyuPainter extends CustomPainter {
   final double spacing, offsetX, offsetY;
   final Set<_EdgeKey> preview;
   final int drawMode;
+  final Offset? dragTail; // 鼠标拖拽尾巴位置
 
   _MasyuPainter({required this.puzzle, required this.spacing,
     required this.offsetX, required this.offsetY,
-    required this.preview, required this.drawMode});
+    required this.preview, required this.drawMode,
+    this.dragTail});
 
   /// dot(c, r) 坐标：c=0..cols, r=0..rows
   Offset _n(int c, int r) => Offset(offsetX + (c + 1) * spacing, offsetY + (r + 1) * spacing);
@@ -246,7 +303,7 @@ class _MasyuPainter extends CustomPainter {
   /// hEdges[r][c] : dot(c,r) ↔ dot(c+1,r)   r=0..rows, c=0..cols-1
   /// vEdges[r][c] : dot(c,r) ↔ dot(c,r+1)   r=0..rows-1, c=0..cols
   void _lines(Canvas canvas) {
-    final p = Paint()..color = const Color(0xFF000000)..strokeWidth = 8..strokeCap = StrokeCap.square;
+    final p = Paint()..color = const Color(0xFF000000)..strokeWidth = 3..strokeCap = StrokeCap.square;
     for (int r = 0; r <= rows; r++)
       for (int c = 0; c < cols; c++)
         if (puzzle.hEdges[r][c] == EdgeState.line) canvas.drawLine(_n(c, r), _n(c + 1, r), p);
@@ -256,8 +313,8 @@ class _MasyuPainter extends CustomPainter {
   }
 
   void _previewLines(Canvas canvas) {
-    if (preview.isEmpty) return;
-    final p = Paint()..color = const Color(0xFF000000)..strokeWidth = 8..strokeCap = StrokeCap.square;
+    if (preview.isEmpty && dragTail == null) return;
+    final p = Paint()..color = const Color(0xFF000000)..strokeWidth = 3..strokeCap = StrokeCap.square;
     for (final e in preview) {
       if (e.isH) {
         if (e.c < 0 || e.c >= cols) continue;
@@ -266,6 +323,27 @@ class _MasyuPainter extends CustomPainter {
         if (e.r < 0 || e.r >= rows) continue;
         canvas.drawLine(_n(e.c, e.r), _n(e.c, e.r + 1), p);
       }
+    }
+    // 拖拽尾巴：从最后一个dot画到鼠标当前位置
+    if (dragTail != null && preview.isNotEmpty) {
+      // 找最后一个拖拽边的终点
+      final lastEdge = preview.last;
+      Offset endPt;
+      if (lastEdge.isH) {
+        endPt = _n(lastEdge.c + 1, lastEdge.r);
+      } else {
+        endPt = _n(lastEdge.c, lastEdge.r + 1);
+      }
+      // 限制尾巴方向为水平或垂直
+      final dx = (dragTail!.dx - endPt.dx).abs();
+      final dy = (dragTail!.dy - endPt.dy).abs();
+      Offset tailEnd;
+      if (dx > dy) {
+        tailEnd = Offset(dragTail!.dx, endPt.dy);
+      } else {
+        tailEnd = Offset(endPt.dx, dragTail!.dy);
+      }
+      canvas.drawLine(endPt, tailEnd, p);
     }
   }
 
