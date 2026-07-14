@@ -76,7 +76,7 @@ class SudokuBoardState extends State<SudokuBoard> {
         widget.puzzle.cells[r][c] = n;
         widget.puzzle.notes[r][c].clear();
         _errors.remove('$r,$c');
-        if (!_isValidAt(r, c)) _errors.add('$r,$c');
+        if (n != widget.puzzle.solution[r][c]) _errors.add('$r,$c');
       });
       widget.onCellChanged?.call(r, c, old, n);
     }

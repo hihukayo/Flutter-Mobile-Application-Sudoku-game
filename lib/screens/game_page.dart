@@ -92,7 +92,7 @@ class _GamePageState extends State<GamePage> {
     _undoStack.add(_UndoEntry(r, c, oldVal));
     if (_undoStack.length > 50) _undoStack.removeAt(0);
     _redoStack.clear();
-    if (newVal != _puzzle.solution[r][c]) {
+    if (newVal != 0 && newVal != _puzzle.solution[r][c]) {
       _errors++;
       if (_errors >= _maxErrors) {
         _timer?.cancel();
