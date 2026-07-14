@@ -96,7 +96,10 @@ class _GamePageState extends State<GamePage> {
       _errors++;
       if (_errors >= _maxErrors) {
         _timer?.cancel();
-        setState(() => _gameOver = true);
+        setState(() {
+          _paused = true;
+          _gameOver = true;
+        });
         return;
       }
       setState(() {});
