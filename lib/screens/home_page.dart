@@ -35,7 +35,7 @@ class _HomePageState extends State<HomePage> {
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.grid_on, color: Color(0xFF455A64)), label: '对局'),
+          NavigationDestination(icon: Icon(Icons.grid_on, color: Color(0xFF455A64)), label: '数独'),
           NavigationDestination(icon: Icon(Icons.emoji_events, color: Color(0xFF455A64)), label: '排行榜'),
           NavigationDestination(icon: Icon(Icons.person, color: Color(0xFF455A64)), label: '我的'),
         ],

@@ -74,9 +74,9 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 Icon(Icons.circle, size: 48, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(height: 8),
-                const Text('Pearl', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                const Text('数独', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('珍珠棋', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                Text('Sudoku', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                 const SizedBox(height: 40),
                 TextField(
                   controller: _accountController,
