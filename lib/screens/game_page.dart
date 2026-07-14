@@ -28,6 +28,8 @@ class _GamePageState extends State<GamePage> {
   bool _gameOver = false;
   int _errors = 0;
   Timer? _timer;
+  Timer? _statusTimer;
+  String _statusMsg = '';
   final List<_UndoEntry> _undoStack = [];
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFocus = FocusNode();
@@ -41,6 +43,7 @@ class _GamePageState extends State<GamePage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _statusTimer?.cancel();
     super.dispose();
   }
 
@@ -110,7 +113,11 @@ class _GamePageState extends State<GamePage> {
       _timer?.cancel();
       setState(() => _isSolved = true);
     } else {
-      _showMsg('还有错误，再检查一下吧');
+      setState(() => _statusMsg = '还有错误，再检查一下吧');
+      _statusTimer?.cancel();
+      _statusTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _statusMsg = '');
+      });
     }
   }
 
@@ -330,6 +337,9 @@ class _GamePageState extends State<GamePage> {
     }
     if (_paused) {
       return Text('已暂停', style: style.copyWith(color: const Color(0xFF455A64)));
+    }
+    if (_statusMsg.isNotEmpty) {
+      return Text(_statusMsg, style: style.copyWith(color: const Color(0xFF455A64)));
     }
     return const SizedBox.shrink();
   }
