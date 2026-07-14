@@ -9,6 +9,7 @@ class SudokuBoard extends StatefulWidget {
   final bool readOnly;
   final void Function(int r, int c, int oldVal, int newVal)? onCellChanged;
   final VoidCallback? onRefresh;
+  final VoidCallback? onRequestInput;
 
   const SudokuBoard({
     super.key,
@@ -17,6 +18,7 @@ class SudokuBoard extends StatefulWidget {
     this.readOnly = false,
     this.onCellChanged,
     this.onRefresh,
+    this.onRequestInput,
   });
 
   @override
@@ -26,8 +28,6 @@ class SudokuBoard extends StatefulWidget {
 class SudokuBoardState extends State<SudokuBoard> {
   int? _selectedRow, _selectedCol;
   final Set<String> _errors = {};
-  final TextEditingController _textController = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
 
   bool _isValidAt(int r, int c) {
     final n = widget.puzzle.cells[r][c];
@@ -55,38 +55,18 @@ class SudokuBoardState extends State<SudokuBoard> {
     widget.onRefresh?.call();
   }
 
-  void _onCellTap(int r, int c) {
-    HapticFeedback.selectionClick();
-    setState(() {
-      _selectedRow = r;
-      _selectedCol = c;
-    });
-    if (!widget.readOnly) {
-      _textController.clear();
-      _focusNode.requestFocus();
-    }
-  }
-
-  void _onTextChanged(String v) {
-    if (widget.readOnly) return;
-    if (_selectedRow == null || _selectedCol == null) return;
+  void fillNumber(int n) {
+    if (_selectedRow == null || _selectedCol == null || widget.readOnly) return;
     final r = _selectedRow!, c = _selectedCol!;
     if (widget.puzzle.given[r][c]) return;
 
-    final digits = v.replaceAll(RegExp(r'[^1-9]'), '');
-    if (digits.isEmpty) return;
-    final n = int.parse(digits.substring(digits.length - 1));
-    _textController.clear();
-
     if (widget.noteMode) {
-      // 笔记模式：填入/替换单个笔记
       if (widget.puzzle.notes[r][c].contains(n)) {
         setState(() => widget.puzzle.notes[r][c].remove(n));
       } else {
         setState(() => widget.puzzle.setNote(r, c, n));
       }
     } else {
-      // 正常模式：填入数字
       final old = widget.puzzle.cells[r][c];
       setState(() {
         widget.puzzle.cells[r][c] = n;
@@ -97,6 +77,103 @@ class SudokuBoardState extends State<SudokuBoard> {
       widget.onCellChanged?.call(r, c, old, n);
     }
     widget.onRefresh?.call();
+  }
+
+  void _onCellTap(int r, int c) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedRow = r;
+      _selectedCol = c;
+    });
+    if (!widget.readOnly) {
+      widget.onRequestInput?.call();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = GoogleFonts.montserrat();
+
+    return Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFF455A64), width: 2.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 81,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 9, mainAxisSpacing: 0, crossAxisSpacing: 0,
+          ),
+          itemBuilder: (_, index) {
+            final r = index ~/ 9, c = index % 9;
+            final val = widget.puzzle.cells[r][c];
+            final isGiven = widget.puzzle.given[r][c];
+            final isSelected = _selectedRow == r && _selectedCol == c;
+            final isError = _errors.contains('$r,$c');
+            final inSameRow = _selectedRow == r;
+            final inSameCol = _selectedCol == c;
+            final inSameBox = _selectedRow != null && _selectedCol != null &&
+                r ~/ 3 == _selectedRow! ~/ 3 && c ~/ 3 == _selectedCol! ~/ 3;
+            final isHighlighted = (inSameRow || inSameCol || inSameBox) && !isSelected;
+
+            Color? textColor;
+            FontWeight fontWeight;
+            if (isGiven) {
+              textColor = const Color(0xFF1A1A2E);
+              fontWeight = FontWeight.w700;
+            } else if (val == 0) {
+              textColor = null;
+              fontWeight = FontWeight.normal;
+            } else if (isError) {
+              textColor = Colors.red[600];
+              fontWeight = FontWeight.w600;
+            } else {
+              textColor = Colors.green[700];
+              fontWeight = FontWeight.w600;
+            }
+
+            return GestureDetector(
+              onTap: () => _onCellTap(r, c),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFFBBDEFB)
+                       : isHighlighted ? const Color(0xFFF0F4F8)
+                       : Colors.white,
+                  border: Border(
+                    right: BorderSide(
+                      color: (c + 1) % 3 == 0 ? const Color(0xFF455A64) : Colors.grey[300]!,
+                      width: (c + 1) % 3 == 0 ? 2 : 0.5,
+                    ),
+                    bottom: BorderSide(
+                      color: (r + 1) % 3 == 0 ? const Color(0xFF455A64) : Colors.grey[300]!,
+                      width: (r + 1) % 3 == 0 ? 2 : 0.5,
+                    ),
+                  ),
+                ),
+                child: val != 0
+                    ? Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '$val',
+                            style: textStyle.copyWith(
+                              fontSize: 22,
+                              fontWeight: fontWeight,
+                              color: textColor,
+                            ),
+                          ),
+                        ),
+                      )
+                    : widget.puzzle.notes[r][c].isEmpty
+                        ? null
+                        : _buildNotes(r, c, textStyle),
+              ),
+            );
+          },
+        ),
+    );
   }
 
   Widget _buildNotes(int r, int c, TextStyle ts) {
@@ -112,126 +189,6 @@ class SudokuBoardState extends State<SudokuBoard> {
           color: const Color(0xFF0B4CFF),
         )),
       ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _textController.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final textStyle = GoogleFonts.montserrat();
-
-    return Stack(
-      children: [
-        // 隐藏的 TextField（接收键盘输入）
-        Opacity(
-          opacity: 0,
-          child: SizedBox(
-            height: 0,
-            child: TextField(
-              controller: _textController,
-              focusNode: _focusNode,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.done,
-              inputFormatters: [],
-              onChanged: _onTextChanged,
-              autofocus: false,
-            ),
-          ),
-        ),
-        // 棋盘
-        AspectRatio(
-          aspectRatio: 1,
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF455A64), width: 2.5),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 81,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 9, mainAxisSpacing: 0, crossAxisSpacing: 0,
-              ),
-              itemBuilder: (_, index) {
-                final r = index ~/ 9, c = index % 9;
-                final val = widget.puzzle.cells[r][c];
-                final isGiven = widget.puzzle.given[r][c];
-                final isSelected = _selectedRow == r && _selectedCol == c;
-                final isError = _errors.contains('$r,$c');
-                final isSameNum = val != 0 && _selectedRow != null &&
-                    _selectedCol != null && _selectedRow != r &&
-                    _selectedCol != c &&
-                    widget.puzzle.cells[_selectedRow!][_selectedCol!] == val;
-                final inSameRow = _selectedRow == r;
-                final inSameCol = _selectedCol == c;
-                final inSameBox = _selectedRow != null && _selectedCol != null &&
-                    r ~/ 3 == _selectedRow! ~/ 3 && c ~/ 3 == _selectedCol! ~/ 3;
-                final isHighlighted = (inSameRow || inSameCol || inSameBox) && !isSelected;
-
-                Color? textColor;
-                FontWeight fontWeight;
-                if (isGiven) {
-                  textColor = const Color(0xFF1A1A2E);
-                  fontWeight = FontWeight.w700;
-                } else if (val == 0) {
-                  textColor = null;
-                  fontWeight = FontWeight.normal;
-                } else if (isError) {
-                  textColor = Colors.red[600];
-                  fontWeight = FontWeight.w600;
-                } else {
-                  textColor = Colors.green[700];
-                  fontWeight = FontWeight.w600;
-                }
-
-                return GestureDetector(
-                  onTap: () => _onCellTap(r, c),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFBBDEFB)
-                           : isHighlighted ? const Color(0xFFF0F4F8)
-                           : Colors.white,
-                      border: Border(
-                        right: BorderSide(
-                          color: (c + 1) % 3 == 0 ? const Color(0xFF455A64) : Colors.grey[300]!,
-                          width: (c + 1) % 3 == 0 ? 2 : 0.5,
-                        ),
-                        bottom: BorderSide(
-                          color: (r + 1) % 3 == 0 ? const Color(0xFF455A64) : Colors.grey[300]!,
-                          width: (r + 1) % 3 == 0 ? 2 : 0.5,
-                        ),
-                      ),
-                    ),
-                    child: val != 0
-                        ? Center(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                '$val',
-                                style: textStyle.copyWith(
-                                  fontSize: 22,
-                                  fontWeight: fontWeight,
-                                  color: textColor,
-                                ),
-                              ),
-                            ),
-                          )
-                        : widget.puzzle.notes[r][c].isEmpty
-                            ? null
-                            : _buildNotes(r, c, textStyle),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

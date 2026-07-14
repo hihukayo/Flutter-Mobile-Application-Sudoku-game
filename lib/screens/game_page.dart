@@ -29,6 +29,8 @@ class _GamePageState extends State<GamePage> {
   int _errors = 0;
   Timer? _timer;
   final List<_UndoEntry> _undoStack = [];
+  final TextEditingController _textController = TextEditingController();
+  final FocusNode _textFocus = FocusNode();
 
   @override
   void initState() {
@@ -172,6 +174,7 @@ class _GamePageState extends State<GamePage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         leading: Padding(
           padding: const EdgeInsets.only(left: 8),
@@ -197,7 +200,9 @@ class _GamePageState extends State<GamePage> {
           ),
         ],
       ),
-      body: SafeArea(
+      body: Stack(
+        children: [
+          SafeArea(
         child: Column(
           children: [
             const Divider(height: 1, thickness: 0.5),
@@ -241,39 +246,78 @@ class _GamePageState extends State<GamePage> {
               ),
             ),
 
-            // 棋盘
+            // 棋盘（固定正方形，可滚动防溢出）
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: SudokuBoard(
-                        key: _boardKey,
-                        puzzle: _puzzle,
-                        noteMode: _noteMode,
-                        readOnly: _paused || _gameOver,
-                        onCellChanged: _onCellChanged,
-                        onRefresh: () => setState(() {}),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: LayoutBuilder(
+                  builder: (_, constraints) {
+                    final size = constraints.maxWidth;
+                    return SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: size,
+                            height: size,
+                            child: SudokuBoard(
+                              key: _boardKey,
+                              puzzle: _puzzle,
+                              noteMode: _noteMode,
+                              readOnly: _paused || _gameOver,
+                              onCellChanged: _onCellChanged,
+                              onRefresh: () => setState(() {}),
+                              onRequestInput: () {
+                                _textFocus.requestFocus();
+                                SystemChannels.textInput.invokeMethod('TextInput.show');
+                              },
+                            ),
+                          ),
+                          Container(
+                            height: 28,
+                            alignment: Alignment.center,
+                            child: _buildStatus(),
+                          ),
+                        ],
                       ),
-                    ),
-                    // 状态提示（紧贴棋盘下方）
-                    Container(
-                      height: 28,
-                      alignment: Alignment.center,
-                      child: _buildStatus(),
-                    ),
-                    // 分隔线
-                    const Divider(height: 1, thickness: 0.5),
-                  ],
+                    );
+                  },
                 ),
               ),
             ),
-
+            const Divider(height: 1, thickness: 0.5),
+            const SizedBox(height: 12),
             // 底部操作区
             _buildBottomBar(infoStyle),
           ],
         ),
+      ),
+          // 隐藏输入框
+          Positioned(
+            left: 0, right: 0, bottom: 0,
+            child: SizedBox(
+              height: 0.1,
+              child: TextField(
+                controller: _textController,
+                focusNode: _textFocus,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                showCursor: false,
+                enableInteractiveSelection: false,
+                style: const TextStyle(fontSize: 0.1, color: Colors.transparent),
+                decoration: const InputDecoration(border: InputBorder.none),
+                onChanged: (v) {
+                  final digits = v.replaceAll(RegExp(r'[^1-9]'), '');
+                  if (digits.isNotEmpty) {
+                    final n = int.parse(digits.substring(digits.length - 1));
+                    _boardKey.currentState?.fillNumber(n);
+                  }
+                  _textController.clear();
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
