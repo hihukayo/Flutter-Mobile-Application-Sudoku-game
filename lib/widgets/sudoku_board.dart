@@ -43,6 +43,22 @@ class SudokuBoardState extends State<SudokuBoard> {
     return true;
   }
 
+  /// 清除当前选中格（供物理键盘 Backspace/Delete 调用）
+  void clearSelected() {
+    if (_selectedRow == null || _selectedCol == null || widget.readOnly) return;
+    final r = _selectedRow!, c = _selectedCol!;
+    if (widget.puzzle.given[r][c]) return;
+    final old = widget.puzzle.cells[r][c];
+    if (old == 0 && widget.puzzle.notes[r][c].isEmpty) return;
+    setState(() {
+      widget.puzzle.cells[r][c] = 0;
+      widget.puzzle.notes[r][c].clear();
+      _errors.remove('$r,$c');
+    });
+    if (old != 0) widget.onCellChanged?.call(r, c, old, 0);
+    widget.onRefresh?.call();
+  }
+
   void fillNumber(int n) {
     if (_selectedRow == null || _selectedCol == null || widget.readOnly) return;
     final r = _selectedRow!, c = _selectedCol!;

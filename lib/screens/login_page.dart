@@ -72,7 +72,6 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.circle, size: 48, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(height: 8),
                 const Text('数独', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),

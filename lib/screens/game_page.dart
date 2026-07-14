@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import '../models/sudoku_game.dart';
 import '../models/sudoku_generator.dart';
@@ -120,12 +121,50 @@ class _GamePageState extends State<GamePage> {
     setState(() => _puzzle.cells[entry.r][entry.c] = entry.oldVal);
   }
 
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (_paused || _gameOver) return KeyEventResult.ignored;
+
+    // 数字键 1-9（主键盘和小键盘）
+    int? n;
+    if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) n = 1;
+    else if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) n = 2;
+    else if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) n = 3;
+    else if (event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) n = 4;
+    else if (event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) n = 5;
+    else if (event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) n = 6;
+    else if (event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) n = 7;
+    else if (event.logicalKey == LogicalKeyboardKey.digit8 || event.logicalKey == LogicalKeyboardKey.numpad8) n = 8;
+    else if (event.logicalKey == LogicalKeyboardKey.digit9 || event.logicalKey == LogicalKeyboardKey.numpad9) n = 9;
+
+    if (n != null) {
+      _tap();
+      _boardKey.currentState?.fillNumber(n);
+      setState(() {});
+      return KeyEventResult.handled;
+    }
+
+    // 退格 / Delete 清除当前格
+    if (event.logicalKey == LogicalKeyboardKey.backspace ||
+        event.logicalKey == LogicalKeyboardKey.delete) {
+      _tap();
+      _boardKey.currentState?.clearSelected();
+      setState(() {});
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
   void _checkCompletion() {
     _tap();
     if (_paused || _gameOver) return;
     if (_puzzle.isComplete() && _puzzle.isCorrect()) {
       _timer?.cancel();
-      setState(() => _isSolved = true);
+      setState(() {
+        _paused = true;
+        _isSolved = true;
+      });
     } else {
       setState(() => _statusMsg = '还有错误，再检查一下吧');
       _statusTimer?.cancel();
@@ -140,6 +179,7 @@ class _GamePageState extends State<GamePage> {
     _timer?.cancel();
     _boardKey = GlobalKey();
     setState(() {
+      _paused = true;
       _hasGivenUp = true;
       for (int r = 0; r < 9; r++)
         for (int c = 0; c < 9; c++)
@@ -215,7 +255,10 @@ class _GamePageState extends State<GamePage> {
         ],
       ),
       bottomNavigationBar: _buildBottomBar(infoStyle),
-      body: Stack(
+      body: Focus(
+        autofocus: true,
+        onKeyEvent: _onKeyEvent,
+        child: Stack(
         children: [
           Column(
           children: [
@@ -235,19 +278,19 @@ class _GamePageState extends State<GamePage> {
                   )),
                   const SizedBox(width: 24),
                   GestureDetector(
-                    onTap: _gameOver ? null : _togglePause,
+                    onTap: (_gameOver || _hasGivenUp) ? null : _togglePause,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           _paused ? Icons.play_arrow : Icons.pause,
                           size: 14,
-                          color: _gameOver ? Colors.grey[350]! : _blue,
+                          color: (_gameOver || _hasGivenUp) ? Colors.grey[350]! : _blue,
                         ),
                         const SizedBox(width: 3),
                         Text(_formatTime(_seconds), style: GoogleFonts.montserrat(
                           fontSize: 12, fontWeight: FontWeight.w500,
-                          color: _gameOver ? Colors.grey[350]! : const Color(0xFF455A64),
+                          color: (_gameOver || _hasGivenUp) ? Colors.grey[350]! : const Color(0xFF455A64),
                         )),
                       ],
                     ),
@@ -327,6 +370,7 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
