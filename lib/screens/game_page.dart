@@ -65,6 +65,7 @@ class _GamePageState extends State<GamePage> {
   int _clueCount = 30;
   String _difficulty = '中等';
   final List<int> _lastClueCounts = <int>[];
+  bool _generating = false;
   int get _maxErrors => _boardSize == 3 ? 3 : 6;
   Timer? _timer;
   Timer? _statusTimer;
@@ -98,13 +99,12 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _click() {
-    if (!_debounce()) return;
     _clickChannel.invokeMethod('vibrate');
     _clickChannel.invokeMethod('tone_click');
   }
 
   void _success() {
-    _tap();  // 轻触感，不防抖
+    _tap();  // 轻触感
     _clickChannel.invokeMethod('vibrate');
     _clickChannel.invokeMethod('tone_success');
   }
@@ -144,14 +144,18 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _newGame({bool silent = false}) {
+    if (_generating) return; // 生成中禁止重复点击
     if (silent) {
       _tap();
       _clickChannel.invokeMethod('vibrate');
     } else {
+      if (!_debounce()) return;
       _click();
     }
+    _generating = true;
     _pickClueCount();
     _puzzle = SudokuGenerator(boardSize: _boardSize).generate(clues: _clueCount);
+    _generating = false;
     _isSolved = false;
     _hasGivenUp = false;
     _noteMode = false;
@@ -246,11 +250,11 @@ class _GamePageState extends State<GamePage> {
     _undoStack.add(_UndoEntry(
       r: entry.r, c: entry.c,
       oldVal: currentVal, oldNotes: currentNotes,
-      newVal: entry.newVal, newNotes: Set<int>.from(entry.newNotes),
+      newVal: entry.oldVal, newNotes: Set<int>.from(entry.oldNotes),
     ));
     setState(() {
-      _puzzle.cells[entry.r][entry.c] = entry.newVal;
-      _puzzle.notes[entry.r][entry.c] = Set<int>.from(entry.newNotes);
+      _puzzle.cells[entry.r][entry.c] = entry.oldVal;
+      _puzzle.notes[entry.r][entry.c] = Set<int>.from(entry.oldNotes);
     });
     _syncErrorState();
   }
