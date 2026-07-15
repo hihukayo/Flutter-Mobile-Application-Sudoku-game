@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' show Random;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../models/sudoku_game.dart';
 import '../models/sudoku_generator.dart';
 import '../widgets/sudoku_board.dart';
 
 const _clickChannel = MethodChannel('com.example.puzzle_game/click');
+final AudioPlayer _webPlayer = AudioPlayer();
 int _lastClickMs = 0; // 全局防抖时间戳
 
 const _blue = Color(0xFF0B4CFF);
@@ -79,7 +82,11 @@ class _GamePageState extends State<GamePage> {
   @override
   void initState() {
     super.initState();
-    _initAudioAssets();
+    if (kIsWeb) {
+      _webPlayer.setVolume(0.8);
+    } else {
+      _initAudioAssets();
+    }
     _newGame();
   }
 
@@ -98,6 +105,7 @@ class _GamePageState extends State<GamePage> {
   void dispose() {
     _timer?.cancel();
     _statusTimer?.cancel();
+    if (kIsWeb) _webPlayer.dispose();
     super.dispose();
   }
 
@@ -112,19 +120,31 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _click() {
-    _clickChannel.invokeMethod('vibrate');
-    _clickChannel.invokeMethod('tone_click');
+    if (kIsWeb) {
+      _webPlayer.play(AssetSource('audio/click.wav'));
+    } else {
+      _clickChannel.invokeMethod('vibrate');
+      _clickChannel.invokeMethod('tone_click');
+    }
   }
 
   /// 填入/删除格子数字时播放的音效
   void _playPlacement() {
-    _clickChannel.invokeMethod('play_placement', '${Directory.systemTemp.path}/Placement.mp3');
+    if (kIsWeb) {
+      _webPlayer.play(AssetSource('audio/Placement.mp3'));
+    } else {
+      _clickChannel.invokeMethod('play_placement', '${Directory.systemTemp.path}/Placement.mp3');
+    }
   }
 
   void _success() {
     _tap();  // 轻触感
-    _clickChannel.invokeMethod('vibrate');
-    _clickChannel.invokeMethod('tone_success');
+    if (kIsWeb) {
+      _webPlayer.play(AssetSource('audio/success.wav'));
+    } else {
+      _clickChannel.invokeMethod('vibrate');
+      _clickChannel.invokeMethod('tone_success');
+    }
   }
 
   /// 按正态分布随机选取提示数个数，避免连续重复
@@ -223,7 +243,11 @@ class _GamePageState extends State<GamePage> {
         _timer?.cancel();
         _textFocus.unfocus();
         SystemChannels.textInput.invokeMethod('TextInput.hide');
-        _clickChannel.invokeMethod('play_failed', '${Directory.systemTemp.path}/failed.mp3');
+        if (kIsWeb) {
+          _webPlayer.play(AssetSource('audio/failed.mp3'));
+        } else {
+          _clickChannel.invokeMethod('play_failed', '${Directory.systemTemp.path}/failed.mp3');
+        }
         setState(() {
           _paused = true;
           _gameOver = true;
