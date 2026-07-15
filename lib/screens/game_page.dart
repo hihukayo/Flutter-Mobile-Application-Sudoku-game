@@ -46,6 +46,14 @@ Color _diffColor(String diff) {
   }
 }
 
+Color _diffKiller(String diff) {
+  switch (diff) {
+    case '入门': return const Color(0xFF2E7D32);
+    case '困难': return const Color(0xFFC62828);
+    default: return const Color(0xFF0B4CFF); // 中等
+  }
+}
+
 class GamePage extends StatefulWidget {
   const GamePage({super.key});
 
@@ -70,6 +78,8 @@ class _GamePageState extends State<GamePage> {
   String _difficulty = '中等';
   final List<int> _lastClueCounts = <int>[];
   bool _generating = false;
+  bool _isKiller = false;
+  String _killerDifficulty = '中等';
   int get _maxErrors => _boardSize == 3 ? 3 : 6;
   Timer? _timer;
   Timer? _statusTimer;
@@ -191,8 +201,15 @@ class _GamePageState extends State<GamePage> {
       _click();
     }
     _generating = true;
-    _pickClueCount();
-    _puzzle = SudokuGenerator(boardSize: _boardSize).generate(clues: _clueCount);
+    if (_isKiller) {
+      // 杀手难度正态分布：入门25%、中等50%、困难25%
+      final diffRoll = _rng.nextInt(100);
+      _killerDifficulty = diffRoll < 25 ? '入门' : diffRoll < 75 ? '中等' : '困难';
+      _puzzle = SudokuGenerator(boardSize: 3).generateKiller(difficulty: _killerDifficulty);
+    } else {
+      _pickClueCount();
+      _puzzle = SudokuGenerator(boardSize: _boardSize).generate(clues: _clueCount);
+    }
     _generating = false;
     _isSolved = false;
     _hasGivenUp = false;
@@ -237,7 +254,11 @@ class _GamePageState extends State<GamePage> {
     ));
     if (_undoStack.length > 50) _undoStack.removeAt(0);
     _redoStack.clear();
-    if (newVal != 0 && newVal != _puzzle.solution[r][c]) {
+    // 常规：对照答案判错；杀手：检查冲突（重复/笼子和值超限）
+    final bool isError = _isKiller
+        ? (newVal != 0 && _puzzle.isConflictAt(r, c, newVal))
+        : (newVal != 0 && newVal != _puzzle.solution[r][c]);
+    if (isError) {
       _errors++;
       if (_errors >= _maxErrors) {
         _timer?.cancel();
@@ -311,6 +332,11 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _syncErrorState() {
+    if (_isKiller) {
+      setState(() => _errors = 0);
+      _boardKey.currentState?.syncErrors();
+      return;
+    }
     int count = 0;
     for (int r = 0; r < _puzzle.gridSize; r++) {
       for (int c = 0; c < _puzzle.gridSize; c++) {
@@ -379,7 +405,7 @@ class _GamePageState extends State<GamePage> {
         _isSolved = true;
       });
     } else {
-      setState(() => _statusMsg = '还有错误，再检查一下吧');
+      setState(() => _statusMsg = '还有空格未填，请再检查一下吧');
       _statusTimer?.cancel();
       _statusTimer = Timer(const Duration(seconds: 2), () {
         if (mounted) setState(() => _statusMsg = '');
@@ -434,16 +460,34 @@ class _GamePageState extends State<GamePage> {
     final pos = box.localToGlobal(Offset.zero);
     final size = box.size;
 
+    final bool is3Selected = !_isKiller && _boardSize == 3;
+    final bool isKillerSelected = _isKiller;
+    final bool is4Selected = _boardSize == 4;
+
     showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
         pos.dx,
         pos.dy + size.height,
-        pos.dx + 120,
-        pos.dy + size.height + 80,
+        pos.dx + 140,
+        pos.dy + size.height + 120,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       items: [
+        PopupMenuItem(
+          value: '3×3-killer',
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('3×3 杀手', style: TextStyle(fontSize: 13)),
+              const SizedBox(width: 18),
+              if (isKillerSelected) const Icon(Icons.check, size: 14, color: _blue),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(height: 1),
         PopupMenuItem(
           value: '3×3',
           height: 34,
@@ -453,8 +497,7 @@ class _GamePageState extends State<GamePage> {
             children: [
               const Text('3×3 常规', style: TextStyle(fontSize: 13)),
               const SizedBox(width: 18),
-              if (_boardSize == 3)
-                const Icon(Icons.check, size: 14, color: _blue),
+              if (is3Selected) const Icon(Icons.check, size: 14, color: _blue),
             ],
           ),
         ),
@@ -468,19 +511,21 @@ class _GamePageState extends State<GamePage> {
             children: [
               const Text('4×4 常规', style: TextStyle(fontSize: 13)),
               const SizedBox(width: 18),
-              if (_boardSize == 4)
-                const Icon(Icons.check, size: 14, color: _blue),
+              if (is4Selected) const Icon(Icons.check, size: 14, color: _blue),
             ],
           ),
         ),
       ],
     ).then((mode) {
-      if (mode != null) {
-        final newSize = mode == '4×4' ? 4 : 3;
-        if (newSize != _boardSize) {
-          setState(() => _boardSize = newSize);
-          _newGame(silent: true);
-        }
+      if (mode == null) return;
+      final isKiller = mode == '3×3-killer';
+      final newSize = mode == '4×4' ? 4 : 3;
+      if (newSize != _boardSize || isKiller != _isKiller) {
+        setState(() {
+          _boardSize = newSize;
+          _isKiller = isKiller;
+        });
+        _newGame(silent: true);
       }
     });
   }
@@ -542,10 +587,41 @@ class _GamePageState extends State<GamePage> {
       ),
       bottomNavigationBar: _buildBottomBar(infoStyle),
       body: Focus(
-        autofocus: true,
         onKeyEvent: _onKeyEvent,
         child: Stack(
         children: [
+          // 隐藏输入框放在最上层（确保可聚焦）
+          Positioned(
+            top: 0, left: 0, right: 0,
+            child: SizedBox(
+              height: 48,
+              child: TextField(
+                controller: _textController,
+                focusNode: _textFocus,
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.done,
+                showCursor: false,
+                enableInteractiveSelection: false,
+                style: const TextStyle(fontSize: 16, color: Colors.transparent),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onChanged: (v) {
+                  final clean = _boardSize == 3
+                      ? v.replaceAll(RegExp(r'[^1-9]'), '')
+                      : v.toUpperCase().replaceAll(RegExp(r'[^1-9A-G]'), '');
+                  if (clean.isNotEmpty) {
+                    final ch = clean.substring(clean.length - 1);
+                    final n = ch.codeUnitAt(0);
+                    final val = n >= 65 ? n - 65 + 10 : int.parse(ch);
+                    _boardKey.currentState?.fillNumber(val);
+                  }
+                  _textController.clear();
+                },
+              ),
+            ),
+          ),
           Column(
           children: [
             const Divider(height: 1, thickness: 0.5),
@@ -582,9 +658,9 @@ class _GamePageState extends State<GamePage> {
                     ),
                   ),
                   const SizedBox(width: 24),
-                  Text('$_difficulty', style: GoogleFonts.montserrat(
+                  Text(_isKiller ? _killerDifficulty : '$_difficulty', style: GoogleFonts.montserrat(
                     fontSize: 12, fontWeight: FontWeight.w600,
-                    color: _diffColor(_difficulty),
+                    color: _isKiller ? _diffKiller(_killerDifficulty) : _diffColor(_difficulty),
                   )),
                   const SizedBox(width: 4),
                   Text('${_cluesRemaining()}空', style: GoogleFonts.montserrat(
@@ -636,35 +712,6 @@ class _GamePageState extends State<GamePage> {
             ),
           ],
         ),
-          // 隐藏输入框
-          Positioned(
-            left: 0, right: 0, bottom: 0,
-            child: SizedBox(
-              height: 0.1,
-              child: TextField(
-                controller: _textController,
-                focusNode: _textFocus,
-                keyboardType: TextInputType.text,
-                textInputAction: TextInputAction.done,
-                showCursor: false,
-                enableInteractiveSelection: false,
-                style: const TextStyle(fontSize: 0.1, color: Colors.transparent),
-                decoration: const InputDecoration(border: InputBorder.none),
-                onChanged: (v) {
-                  final clean = _boardSize == 3
-                      ? v.replaceAll(RegExp(r'[^1-9]'), '')
-                      : v.toUpperCase().replaceAll(RegExp(r'[^1-9A-G]'), '');
-                  if (clean.isNotEmpty) {
-                    final ch = clean.substring(clean.length - 1);
-                    final n = ch.codeUnitAt(0);
-                    final val = n >= 65 ? n - 65 + 10 : int.parse(ch); // A=10, B=11...
-                    _boardKey.currentState?.fillNumber(val);
-                  }
-                  _textController.clear();
-                },
-              ),
-            ),
-          ),
         ],
       ),
       ),
