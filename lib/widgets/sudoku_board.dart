@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart';
 import '../models/sudoku_game.dart';
 
 class SudokuBoard extends StatefulWidget {
@@ -116,7 +116,7 @@ class SudokuBoardState extends State<SudokuBoard> {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = GoogleFonts.montserrat();
+    final textStyle = const TextStyle();
     final fontSize = _gs == 9 ? 22.0 : 14.0;
     final noteSize = _gs == 9 ? 13.0 : 9.0;
     final isKiller = widget.puzzle.isKiller;

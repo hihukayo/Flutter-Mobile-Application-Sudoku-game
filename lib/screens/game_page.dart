@@ -4,7 +4,7 @@ import 'dart:math' show Random;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../models/sudoku_game.dart';
 import '../models/sudoku_generator.dart';
@@ -263,7 +263,7 @@ class _GamePageState extends State<GamePage> {
       if (_errors >= _maxErrors) {
         _timer?.cancel();
         _textFocus.unfocus();
-        SystemChannels.textInput.invokeMethod('TextInput.hide');
+        if (!kIsWeb) { SystemChannels.textInput.invokeMethod('TextInput.hide'); }
         if (kIsWeb) {
           _webPlayer.play(AssetSource('audio/failed.mp3'));
         } else {
@@ -280,7 +280,7 @@ class _GamePageState extends State<GamePage> {
     // 填满所有格子时自动收起键盘
     if (newVal != 0 && _puzzle.isComplete()) {
       _textFocus.unfocus();
-      SystemChannels.textInput.invokeMethod('TextInput.hide');
+      if (!kIsWeb) { SystemChannels.textInput.invokeMethod('TextInput.hide'); }
     }
   }
 
@@ -310,7 +310,7 @@ class _GamePageState extends State<GamePage> {
       _puzzle.cells[entry.r][entry.c] = entry.oldVal;
       _puzzle.notes[entry.r][entry.c] = Set<int>.from(entry.oldNotes);
     });
-    _syncErrorState();
+    _boardKey.currentState?.syncErrors();
   }
 
   void _redo() {
@@ -328,12 +328,19 @@ class _GamePageState extends State<GamePage> {
       _puzzle.cells[entry.r][entry.c] = entry.oldVal;
       _puzzle.notes[entry.r][entry.c] = Set<int>.from(entry.oldNotes);
     });
-    _syncErrorState();
+    _boardKey.currentState?.syncErrors();
   }
 
   void _syncErrorState() {
     if (_isKiller) {
-      setState(() => _errors = 0);
+      int count = 0;
+      for (int r = 0; r < _puzzle.gridSize; r++) {
+        for (int c = 0; c < _puzzle.gridSize; c++) {
+          final v = _puzzle.cells[r][c];
+          if (v != 0 && _puzzle.isConflictAt(r, c, v)) count++;
+        }
+      }
+      setState(() => _errors = count);
       _boardKey.currentState?.syncErrors();
       return;
     }
@@ -453,7 +460,7 @@ class _GamePageState extends State<GamePage> {
     _clickChannel.invokeMethod('vibrate');
     // 收起手机键盘，防止菜单关闭后键盘弹出
     _textFocus.unfocus();
-    SystemChannels.textInput.invokeMethod('TextInput.hide');
+    try { SystemChannels.textInput.invokeMethod('TextInput.hide'); } catch (_) {}
 
     final RenderBox? box = _menuIconKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
@@ -532,7 +539,7 @@ class _GamePageState extends State<GamePage> {
 
   void _showMsg(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.montserrat()),
+      content: Text(msg, style: const TextStyle()),
       behavior: SnackBarBehavior.floating,
       duration: const Duration(seconds: 2),
     ));
@@ -549,7 +556,7 @@ class _GamePageState extends State<GamePage> {
 
   @override
   Widget build(BuildContext context) {
-    final infoStyle = GoogleFonts.montserrat(
+    final infoStyle = TextStyle(
       fontSize: 13, fontWeight: FontWeight.w500,
     );
 
@@ -566,7 +573,7 @@ class _GamePageState extends State<GamePage> {
           ),
         ),
         leadingWidth: 40,
-        title: Text('数独', style: GoogleFonts.montserrat(fontWeight: FontWeight.w700)),
+        title: Text('数独', style: TextStyle(fontWeight: FontWeight.w700)),
         centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
@@ -634,7 +641,7 @@ class _GamePageState extends State<GamePage> {
                   Icon(Icons.error_outline, size: 14,
                       color: _errors >= _maxErrors ? _red : const Color(0xFF78909C)),
                   const SizedBox(width: 4),
-                  Text('$_errors/$_maxErrors', style: GoogleFonts.montserrat(
+                  Text('$_errors/$_maxErrors', style: TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w500,
                     color: _errors >= _maxErrors ? _red : const Color(0xFF455A64),
                   )),
@@ -650,7 +657,7 @@ class _GamePageState extends State<GamePage> {
                           color: (_gameOver || _hasGivenUp) ? Colors.grey[350]! : _blue,
                         ),
                         const SizedBox(width: 3),
-                        Text(_formatTime(_seconds), style: GoogleFonts.montserrat(
+                        Text(_formatTime(_seconds), style: TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w500,
                           color: (_gameOver || _hasGivenUp) ? Colors.grey[350]! : const Color(0xFF455A64),
                         )),
@@ -658,12 +665,12 @@ class _GamePageState extends State<GamePage> {
                     ),
                   ),
                   const SizedBox(width: 24),
-                  Text(_isKiller ? _killerDifficulty : '$_difficulty', style: GoogleFonts.montserrat(
+                  Text(_isKiller ? _killerDifficulty : '$_difficulty', style: TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w600,
                     color: _isKiller ? _diffKiller(_killerDifficulty) : _diffColor(_difficulty),
                   )),
                   const SizedBox(width: 4),
-                  Text('${_cluesRemaining()}空', style: GoogleFonts.montserrat(
+                  Text('${_cluesRemaining()}空', style: TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF455A64),
                   )),
                 ],
@@ -694,7 +701,9 @@ class _GamePageState extends State<GamePage> {
                               onRefresh: () => setState(() {}),
                               onRequestInput: () {
                                 _textFocus.requestFocus();
-                                SystemChannels.textInput.invokeMethod('TextInput.show');
+                                if (!kIsWeb) {
+                                  SystemChannels.textInput.invokeMethod('TextInput.show');
+                                }
                               },
                             ),
                           ),
@@ -719,7 +728,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   Widget _buildStatus() {
-    final style = GoogleFonts.montserrat(fontSize: 13, fontWeight: FontWeight.w500);
+    final style = TextStyle(fontSize: 13, fontWeight: FontWeight.w500);
     if (_gameOver) {
       return Text('错误 $_errors 次，游戏结束，用时 ${_formatTime(_seconds)}', style: style.copyWith(color: _red));
     }
