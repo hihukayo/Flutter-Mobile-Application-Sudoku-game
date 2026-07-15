@@ -7,6 +7,9 @@ import '../models/sudoku_game.dart';
 import '../models/sudoku_generator.dart';
 import '../widgets/sudoku_board.dart';
 
+const _clickChannel = MethodChannel('com.example.puzzle_game/click');
+int _lastClickMs = 0; // 全局防抖时间戳
+
 const _blue = Color(0xFF0B4CFF);
 const _red = Color(0xFFE53935);
 
@@ -86,6 +89,26 @@ class _GamePageState extends State<GamePage> {
 
   void _tap() => HapticFeedback.lightImpact();
 
+  /// 防抖：300ms 内禁止重复触发
+  bool _debounce() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastClickMs < 300) return false;
+    _lastClickMs = now;
+    return true;
+  }
+
+  void _click() {
+    if (!_debounce()) return;
+    _clickChannel.invokeMethod('vibrate');
+    _clickChannel.invokeMethod('tone_click');
+  }
+
+  void _success() {
+    _tap();  // 轻触感，不防抖
+    _clickChannel.invokeMethod('vibrate');
+    _clickChannel.invokeMethod('tone_success');
+  }
+
   /// 按正态分布随机选取提示数个数，避免连续重复
   int _pickClueCount() {
     final is3 = _boardSize == 3;
@@ -120,8 +143,13 @@ class _GamePageState extends State<GamePage> {
     return clues;
   }
 
-  void _newGame() {
-    _tap();
+  void _newGame({bool silent = false}) {
+    if (silent) {
+      _tap();
+      _clickChannel.invokeMethod('vibrate');
+    } else {
+      _click();
+    }
     _pickClueCount();
     _puzzle = SudokuGenerator(boardSize: _boardSize).generate(clues: _clueCount);
     _isSolved = false;
@@ -147,7 +175,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _togglePause() {
-    _tap();
+    _click();
     setState(() => _paused = !_paused);
   }
 
@@ -192,7 +220,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _undo() {
-    _tap();
+    _click();
     if (_undoStack.isEmpty || _paused || _gameOver) return;
     final entry = _undoStack.removeLast();
     final currentVal = _puzzle.cells[entry.r][entry.c];
@@ -210,7 +238,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _redo() {
-    _tap();
+    _click();
     if (_redoStack.isEmpty || _paused || _gameOver) return;
     final entry = _redoStack.removeLast();
     final currentVal = _puzzle.cells[entry.r][entry.c];
@@ -286,10 +314,11 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _checkCompletion() {
-    _tap();
+    _click();
     if (_paused || _gameOver) return;
     if (_puzzle.isComplete() && _puzzle.isCorrect()) {
       _timer?.cancel();
+      _success();
       setState(() {
         _paused = true;
         _isSolved = true;
@@ -304,7 +333,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _autoSolve() {
-    _tap();
+    _click();
     _timer?.cancel();
     _boardKey = GlobalKey();
     final gs = _puzzle.gridSize;
@@ -319,7 +348,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _restart() {
-    _tap();
+    _click();
     _undoStack.clear();
     _redoStack.clear();
     final gs = _puzzle.gridSize;
@@ -339,6 +368,8 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _showModeMenu() {
+    if (!_debounce()) return;
+    _clickChannel.invokeMethod('vibrate');
     // 收起手机键盘，防止菜单关闭后键盘弹出
     _textFocus.unfocus();
     SystemChannels.textInput.invokeMethod('TextInput.hide');
@@ -365,7 +396,7 @@ class _GamePageState extends State<GamePage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('3×3', style: TextStyle(fontSize: 13)),
+              const Text('3×3 常规', style: TextStyle(fontSize: 13)),
               const SizedBox(width: 18),
               if (_boardSize == 3)
                 const Icon(Icons.check, size: 14, color: _blue),
@@ -380,7 +411,7 @@ class _GamePageState extends State<GamePage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('4×4', style: TextStyle(fontSize: 13)),
+              const Text('4×4 常规', style: TextStyle(fontSize: 13)),
               const SizedBox(width: 18),
               if (_boardSize == 4)
                 const Icon(Icons.check, size: 14, color: _blue),
@@ -393,7 +424,7 @@ class _GamePageState extends State<GamePage> {
         final newSize = mode == '4×4' ? 4 : 3;
         if (newSize != _boardSize) {
           setState(() => _boardSize = newSize);
-          _newGame();
+          _newGame(silent: true);
         }
       }
     });
@@ -444,7 +475,7 @@ class _GamePageState extends State<GamePage> {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
-              onTap: _paused || _gameOver ? null : () => setState(() => _noteMode = !_noteMode),
+              onTap: _paused || _gameOver ? null : () { _click(); setState(() => _noteMode = !_noteMode); },
               child: Icon(
                 _noteMode ? Icons.edit_note : Icons.edit_note_outlined,
                 color: _noteMode ? _blue : const Color(0xFF78909C),
