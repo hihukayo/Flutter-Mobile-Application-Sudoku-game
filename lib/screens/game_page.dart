@@ -600,8 +600,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         cages: cagesJson,
       );
       if (!silent && mounted) _showStatus('存档成功');
-    } catch (e) {
-      if (!silent && mounted) _showStatus('存档失败：$e');
+    } catch (_) {
+      if (!silent && mounted) _showStatus('存档失败');
     }
   }
 
@@ -612,7 +612,6 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       final res = await ApiService.loadGame(username: widget.username);
       if (!mounted) return;
       if (res['success'] != true) {
-        _showStatus('没有存档');
         return;
       }
       final savedAt = res['savedAt'] ?? '';
@@ -677,8 +676,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       if (go != true || !mounted) return;
 
       _restoreFromData(res);
-    } catch (e) {
-      if (mounted) _showStatus('加载失败：$e');
+    } catch (_) {
+      if (mounted) _showStatus('加载失败');
     }
   }
 
@@ -841,12 +840,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         if (res['success'] == true) {
           _showStatus('积分已保存：$score 分');
         } else {
-          _showStatus('提交失败：${res['message']}');
+          _showStatus('提交失败');
         }
       }
-    } catch (e) {
-      if (mounted) _showStatus('网络错误：$e');
-      debugPrint('提交成绩异常：$e');
+    } catch (_) {
+      if (mounted) _showStatus('提交失败');
     }
     return score;
   }
