@@ -64,7 +64,7 @@ class GamePage extends StatefulWidget {
   State<GamePage> createState() => _GamePageState();
 }
 
-class _GamePageState extends State<GamePage> {
+class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   final Random _rng = Random();
   late SudokuPuzzle _puzzle;
   GlobalKey<SudokuBoardState> _boardKey = GlobalKey();
@@ -96,14 +96,21 @@ class _GamePageState extends State<GamePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (kIsWeb) {
       _webPlayer.setVolume(0.8);
     } else {
       _initAudioAssets();
     }
     _newGame();
-    // 初始化完成后检查存档，提示续玩
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkResume());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (!_gameOver && !_isSolved && _seconds > 3) _autoSave();
+    }
   }
 
   /// 进入游戏时检查是否有存档，提示续玩
@@ -190,13 +197,11 @@ class _GamePageState extends State<GamePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _statusTimer?.cancel();
     if (kIsWeb) _webPlayer.dispose();
-    // 退出页面时自动保存（游戏进行中且未结束）
-    if (!_gameOver && !_isSolved && _seconds > 3) {
-      _autoSave();
-    }
+    if (!_gameOver && !_isSolved && _seconds > 3) _autoSave();
     super.dispose();
   }
 
