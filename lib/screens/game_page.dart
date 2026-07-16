@@ -479,8 +479,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
     // 数字键 1-9（主键盘和小键盘）
     int? n;
-    if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) n = 1;
-    else if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) n = 2;
+    if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) {
+      n = 1;
+    } else if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) n = 2;
     else if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) n = 3;
     else if (event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) n = 4;
     else if (event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) n = 5;
@@ -491,8 +492,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
     // 4×4 模式字母键 A-G（对应 10-16）
     if (n == null && _boardSize == 4) {
-      if (event.logicalKey == LogicalKeyboardKey.keyA) n = 10;
-      else if (event.logicalKey == LogicalKeyboardKey.keyB) n = 11;
+      if (event.logicalKey == LogicalKeyboardKey.keyA) {
+        n = 10;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyB) n = 11;
       else if (event.logicalKey == LogicalKeyboardKey.keyC) n = 12;
       else if (event.logicalKey == LogicalKeyboardKey.keyD) n = 13;
       else if (event.logicalKey == LogicalKeyboardKey.keyE) n = 14;
@@ -549,8 +551,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       _paused = true;
       _hasGivenUp = true;
       for (int r = 0; r < gs; r++)
-        for (int c = 0; c < gs; c++)
+        for (int c = 0; c < gs; c++) {
           _puzzle.cells[r][c] = _puzzle.solution[r][c];
+        }
     });
     _syncErrorState();
   }
@@ -952,8 +955,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final gs = _puzzle.gridSize;
     int n = 0;
     for (int r = 0; r < gs; r++)
-      for (int c = 0; c < gs; c++)
+      for (int c = 0; c < gs; c++) {
         if (_puzzle.cells[r][c] == 0) n++;
+      }
     return n;
   }
 
@@ -1068,7 +1072,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                     ),
                   ),
                   const SizedBox(width: 24),
-                  Text(_isKiller ? _killerDifficulty : '$_difficulty', style: TextStyle(
+                  Text(_isKiller ? _killerDifficulty : _difficulty, style: TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w600,
                     color: _isKiller ? _diffKiller(_killerDifficulty) : _diffColor(_difficulty),
                   )),

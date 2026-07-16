@@ -13,12 +13,14 @@ class SudokuGenerator {
     final puzzle = SudokuPuzzle(boardSize: boardSize);
     _fillGrid(puzzle.solution);
     for (int r = 0; r < gridSize; r++)
-      for (int c = 0; c < gridSize; c++)
+      for (int c = 0; c < gridSize; c++) {
         puzzle.cells[r][c] = puzzle.solution[r][c];
+      }
     _removeCells(puzzle, clues);
     for (int r = 0; r < gridSize; r++)
-      for (int c = 0; c < gridSize; c++)
+      for (int c = 0; c < gridSize; c++) {
         puzzle.given[r][c] = puzzle.cells[r][c] != 0;
+      }
     return puzzle;
   }
 
@@ -103,7 +105,9 @@ class SudokuGenerator {
         // 计算和值写入 puzzle
         puzzle.cages = cages.map((c) {
           int sum = 0;
-          for (final idx in c) sum += puzzle.solution[idx ~/ gs][idx % gs];
+          for (final idx in c) {
+            sum += puzzle.solution[idx ~/ gs][idx % gs];
+          }
           return Cage(cellIndices: List.from(c), sum: sum);
         }).toList();
         return true;
@@ -192,7 +196,9 @@ class SudokuGenerator {
     final result = <int>[];
     for (int size = 2; size <= 5; size++) {
       final weight = probs[size - 2];
-      for (int i = 0; i < weight; i++) result.add(size);
+      for (int i = 0; i < weight; i++) {
+        result.add(size);
+      }
     }
     result.shuffle(_rng);
     // 从大到小排序优先尝试（减少死局）
@@ -219,10 +225,11 @@ class SudokuGenerator {
       if (count >= 2) return;
       int? mr, mc;
       for (int r = 0; r < gridSize && mr == null; r++)
-        for (int c = 0; c < gridSize && mc == null; c++)
+        for (int c = 0; c < gridSize && mc == null; c++) {
           if (g[r][c] == 0) { mr = r; mc = c; }
+        }
       if (mr == null) { count++; return; }
-      final rr = mr!, cc = mc!; // 显式非空
+      final rr = mr, cc = mc!; // 显式非空
 
       for (int n = 1; n <= gridSize; n++) {
         if (!_isValid(g, rr, cc, n)) continue;
@@ -236,13 +243,15 @@ class SudokuGenerator {
 
     // 用正确答案填充初始格（加速求解）
     for (int r = 0; r < gridSize; r++)
-      for (int c = 0; c < gridSize; c++)
+      for (int c = 0; c < gridSize; c++) {
         grid[r][c] = puzzle.solution[r][c];
+      }
 
     // 清空格子让求解器重新推导
     for (int r = 0; r < gridSize; r++)
-      for (int c = 0; c < gridSize; c++)
+      for (int c = 0; c < gridSize; c++) {
         grid[r][c] = 0;
+      }
 
     solve(grid);
     return count == 1;
@@ -262,8 +271,11 @@ class SudokuGenerator {
     for (final ci2 in cage.cellIndices) {
       if (ci2 == idx) continue;
       final vr = ci2 ~/ gridSize, vc = ci2 % gridSize;
-      if (grid[vr][vc] == 0) empty++;
-      else sum += grid[vr][vc];
+      if (grid[vr][vc] == 0) {
+        empty++;
+      } else {
+        sum += grid[vr][vc];
+      }
     }
     if (sum > cage.sum) return false;
     if (sum + empty > cage.sum) return false;     // 最小填 1
@@ -295,22 +307,26 @@ class SudokuGenerator {
     }
     final br = r - r % boardSize, bc = c - c % boardSize;
     for (int i = br; i < br + boardSize; i++)
-      for (int j = bc; j < bc + boardSize; j++)
+      for (int j = bc; j < bc + boardSize; j++) {
         if (grid[i][j] == n) return false;
+      }
     return true;
   }
 
   (int, int)? _findEmpty(List<List<int>> grid) {
     for (int r = 0; r < gridSize; r++)
-      for (int c = 0; c < gridSize; c++)
+      for (int c = 0; c < gridSize; c++) {
         if (grid[r][c] == 0) return (r, c);
+      }
     return null;
   }
 
   void _removeCells(SudokuPuzzle puzzle, int clues) {
     final total = gridSize * gridSize;
     final all = <int>[];
-    for (int i = 0; i < total; i++) all.add(i);
+    for (int i = 0; i < total; i++) {
+      all.add(i);
+    }
     all.shuffle(_rng);
     int target = total - clues;
     for (final pos in all) {

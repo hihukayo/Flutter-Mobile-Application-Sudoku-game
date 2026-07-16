@@ -70,8 +70,9 @@ class SudokuPuzzle {
 
   bool isComplete() {
     for (int r = 0; r < gridSize; r++)
-      for (int c = 0; c < gridSize; c++)
+      for (int c = 0; c < gridSize; c++) {
         if (cells[r][c] == 0) return false;
+      }
     return true;
   }
 
@@ -84,8 +85,9 @@ class SudokuPuzzle {
     }
     final br = r - r % boardSize, bc = c - c % boardSize;
     for (int ir = br; ir < br + boardSize; ir++)
-      for (int ic = bc; ic < bc + boardSize; ic++)
+      for (int ic = bc; ic < bc + boardSize; ic++) {
         if ((ir != r || ic != c) && cells[ir][ic] == n) return true;
+      }
 
     // 笼子和值超限
     if (cages != null) {
@@ -172,8 +174,9 @@ class SudokuPuzzle {
 
   bool isCorrect() {
     for (int r = 0; r < gridSize; r++)
-      for (int c = 0; c < gridSize; c++)
+      for (int c = 0; c < gridSize; c++) {
         if (cells[r][c] != solution[r][c]) return false;
+      }
     return true;
   }
 

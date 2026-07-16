@@ -262,7 +262,9 @@ class _CagePainter extends CustomPainter {
     // 每格 → 笼子索引
     final cellCage = List.filled(gs * gs, -1);
     for (int i = 0; i < puzzle.cages!.length; i++) {
-      for (final idx in puzzle.cages![i].cellIndices) cellCage[idx] = i;
+      for (final idx in puzzle.cages![i].cellIndices) {
+        cellCage[idx] = i;
+      }
     }
 
     // 逐笼绘制边界（红 = 和值超限，灰 = 正常）
@@ -277,24 +279,32 @@ class _CagePainter extends CustomPainter {
         final r = idx ~/ gs, c = idx % gs;
         final x = c * cellSize, y = r * cellSize;
 
-        if (r > 0 && !cells.contains((r - 1) * gs + c))
+        if (r > 0 && !cells.contains((r - 1) * gs + c)) {
           canvas.drawLine(Offset(x, y + inset), Offset(x + cellSize, y + inset), paint);
-        if (r < gs - 1 && !cells.contains((r + 1) * gs + c))
+        }
+        if (r < gs - 1 && !cells.contains((r + 1) * gs + c)) {
           canvas.drawLine(Offset(x, y + cellSize - inset), Offset(x + cellSize, y + cellSize - inset), paint);
-        if (c > 0 && !cells.contains(r * gs + (c - 1)))
+        }
+        if (c > 0 && !cells.contains(r * gs + (c - 1))) {
           canvas.drawLine(Offset(x + inset, y), Offset(x + inset, y + cellSize), paint);
-        if (c < gs - 1 && !cells.contains(r * gs + (c + 1)))
+        }
+        if (c < gs - 1 && !cells.contains(r * gs + (c + 1))) {
           canvas.drawLine(Offset(x + cellSize - inset, y), Offset(x + cellSize - inset, y + cellSize), paint);
+        }
 
         // 转角斜线
-        if ((r == 0 || !cells.contains((r - 1) * gs + c)) && (c == 0 || !cells.contains(r * gs + (c - 1))))
+        if ((r == 0 || !cells.contains((r - 1) * gs + c)) && (c == 0 || !cells.contains(r * gs + (c - 1)))) {
           canvas.drawLine(Offset(x + inset, y), Offset(x, y + inset), paint);
-        if ((r == 0 || !cells.contains((r - 1) * gs + c)) && (c == gs - 1 || !cells.contains(r * gs + (c + 1))))
+        }
+        if ((r == 0 || !cells.contains((r - 1) * gs + c)) && (c == gs - 1 || !cells.contains(r * gs + (c + 1)))) {
           canvas.drawLine(Offset(x + cellSize, y + inset), Offset(x + cellSize - inset, y), paint);
-        if ((r == gs - 1 || !cells.contains((r + 1) * gs + c)) && (c == 0 || !cells.contains(r * gs + (c - 1))))
+        }
+        if ((r == gs - 1 || !cells.contains((r + 1) * gs + c)) && (c == 0 || !cells.contains(r * gs + (c - 1)))) {
           canvas.drawLine(Offset(x, y + cellSize - inset), Offset(x + inset, y + cellSize), paint);
-        if ((r == gs - 1 || !cells.contains((r + 1) * gs + c)) && (c == gs - 1 || !cells.contains(r * gs + (c + 1))))
+        }
+        if ((r == gs - 1 || !cells.contains((r + 1) * gs + c)) && (c == gs - 1 || !cells.contains(r * gs + (c + 1)))) {
           canvas.drawLine(Offset(x + cellSize - inset, y + cellSize), Offset(x + cellSize, y + cellSize - inset), paint);
+        }
       }
     }
 

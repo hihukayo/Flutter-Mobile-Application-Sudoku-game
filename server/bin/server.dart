@@ -322,7 +322,7 @@ final _router = Router()
   // GET /api/load?username=xxx — 加载最近一次存档
   ..get('/api/load', (Request req) async {
     try {
-      final username = req.url?.queryParameters['username']?.trim();
+      final username = req.url.queryParameters['username']?.trim();
       if (username == null || username.isEmpty) {
         return Response.ok(jsonEncode(_fail('缺少用户名')),
             headers: {'Content-Type': 'application/json'});
@@ -451,7 +451,7 @@ final _router = Router()
   // GET /api/rank/user?username=xxx — 获取单个用户统计
   ..get('/api/rank/user', (Request req) async {
     try {
-      final username = req.url?.queryParameters['username']?.trim();
+      final username = req.url.queryParameters['username']?.trim();
       if (username == null || username.isEmpty) {
         return Response.ok(jsonEncode(_fail('缺少用户名')),
             headers: {'Content-Type': 'application/json'});

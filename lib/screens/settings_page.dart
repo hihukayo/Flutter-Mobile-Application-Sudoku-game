@@ -112,7 +112,7 @@ class _SettingsPageState extends State<SettingsPage> {
             TextField(
               controller: pwdController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: '当前密码', border: const OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: '当前密码', border: OutlineInputBorder()),
             ),
           ],
         ),
