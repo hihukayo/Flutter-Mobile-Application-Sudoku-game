@@ -12,15 +12,17 @@ class SudokuGenerator {
   SudokuPuzzle generate({int clues = 30}) {
     final puzzle = SudokuPuzzle(boardSize: boardSize);
     _fillGrid(puzzle.solution);
-    for (int r = 0; r < gridSize; r++)
+    for (int r = 0; r < gridSize; r++) {
       for (int c = 0; c < gridSize; c++) {
         puzzle.cells[r][c] = puzzle.solution[r][c];
-      }
+      }      
+    }
     _removeCells(puzzle, clues);
-    for (int r = 0; r < gridSize; r++)
+    for (int r = 0; r < gridSize; r++) {
       for (int c = 0; c < gridSize; c++) {
         puzzle.given[r][c] = puzzle.cells[r][c] != 0;
-      }
+      }      
+    }
     return puzzle;
   }
 
@@ -44,11 +46,12 @@ class SudokuGenerator {
       if (_generateCages(puzzle, difficulty)) {
         puzzle.killerDifficulty = difficulty;
         // 清空所有格子（杀手数独不给任何数字）
-        for (int r = 0; r < gridSize; r++)
+        for (int r = 0; r < gridSize; r++) {
           for (int c = 0; c < gridSize; c++) {
             puzzle.cells[r][c] = 0;
             puzzle.given[r][c] = false;
           }
+        }
         return puzzle;
       }
     }
@@ -224,10 +227,11 @@ class SudokuGenerator {
     void solve(List<List<int>> g) {
       if (count >= 2) return;
       int? mr, mc;
-      for (int r = 0; r < gridSize && mr == null; r++)
+      for (int r = 0; r < gridSize && mr == null; r++) {
         for (int c = 0; c < gridSize && mc == null; c++) {
           if (g[r][c] == 0) { mr = r; mc = c; }
-        }
+        }        
+      }
       if (mr == null) { count++; return; }
       final rr = mr, cc = mc!; // 显式非空
 
@@ -242,16 +246,18 @@ class SudokuGenerator {
     }
 
     // 用正确答案填充初始格（加速求解）
-    for (int r = 0; r < gridSize; r++)
+    for (int r = 0; r < gridSize; r++) {
       for (int c = 0; c < gridSize; c++) {
         grid[r][c] = puzzle.solution[r][c];
-      }
+      }      
+    }
 
     // 清空格子让求解器重新推导
-    for (int r = 0; r < gridSize; r++)
+    for (int r = 0; r < gridSize; r++) {
       for (int c = 0; c < gridSize; c++) {
         grid[r][c] = 0;
-      }
+      }      
+    }
 
     solve(grid);
     return count == 1;
@@ -306,18 +312,20 @@ class SudokuGenerator {
       if (grid[i][c] == n) return false;
     }
     final br = r - r % boardSize, bc = c - c % boardSize;
-    for (int i = br; i < br + boardSize; i++)
+    for (int i = br; i < br + boardSize; i++) {
       for (int j = bc; j < bc + boardSize; j++) {
         if (grid[i][j] == n) return false;
-      }
+      }      
+    }
     return true;
   }
 
   (int, int)? _findEmpty(List<List<int>> grid) {
-    for (int r = 0; r < gridSize; r++)
+    for (int r = 0; r < gridSize; r++) {
       for (int c = 0; c < gridSize; c++) {
         if (grid[r][c] == 0) return (r, c);
-      }
+      }      
+    }
     return null;
   }
 
