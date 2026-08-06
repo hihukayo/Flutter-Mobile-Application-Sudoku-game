@@ -575,6 +575,10 @@ sudoku/
 
 > 后端为独立仓库：[go-sudoku-backend](https://github.com/hihukayo/go-sudoku-backend.git)（Go + MySQL，完整接口文档见该仓库 README）。
 
+## 📥 下载
+
+最新发布版：[GitHub Releases](https://github.com/hihukayo/Flutter-Mobile-Application-Sudoku-game/releases/latest)（含 arm64-v8a / armeabi-v7a / x86_64 三种安装包）
+
 ## 📄 License
 
 本项目基于 GNU General Public License v3.0 (GPLv3) 开源 — 详见 [LICENSE](LICENSE) 文件。
