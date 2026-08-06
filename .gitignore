@@ -47,7 +47,3 @@ app.*.map.json
 # Android build reports
 /android/build/
 
-# Server
-/server/.dart_tool/
-/server/.pub/
-/server/build/
