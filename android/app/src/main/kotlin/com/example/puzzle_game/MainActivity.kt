@@ -12,6 +12,7 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -33,6 +34,22 @@ class MainActivity : FlutterActivity() {
                 "play_failed" -> playMp3(call.arguments as? String ?: "")
             }
         }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.example.puzzle_game/window")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "set_soft_input_mode" -> {
+                        val mode = call.argument<String>("mode")
+                        val flag = when (mode) {
+                            "resize" -> WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                            "pan" -> WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
+                            else -> WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+                        }
+                        window.setSoftInputMode(flag)
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
     }
 
     private fun vibrate() {

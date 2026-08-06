@@ -20,6 +20,9 @@ class ApiService {
     await prefs.setString('server_address', _customAddress);
   }
 
+  /// 当前自定义服务器地址（可能为空）
+  static String get currentAddress => _customAddress;
+
   static String get baseUrl {
     final custom = _customAddress.trim();
     if (custom.isNotEmpty) {

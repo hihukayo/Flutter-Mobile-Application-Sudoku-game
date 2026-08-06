@@ -10,6 +10,7 @@ import '../models/sudoku_game.dart';
 import '../models/sudoku_generator.dart';
 import '../widgets/sudoku_board.dart';
 import '../services/api_service.dart';
+import '../services/window_util.dart';
 
 const _clickChannel = MethodChannel('com.example.puzzle_game/click');
 final AudioPlayer _webPlayer = AudioPlayer();
@@ -39,19 +40,27 @@ const _weights4x4 = [25, 50, 25];
 // ---- 难度对应的显示颜色 ----
 Color _diffColor(String diff) {
   switch (diff) {
-    case '极简': return const Color(0xFFC62828);
-    case '困难': return const Color(0xFFE65100);
-    case '中等': return const Color(0xFF0B4CFF);
-    case '简单': return const Color(0xFF2E7D32);
-    default: return const Color(0xFF455A64);
+    case '极简':
+      return const Color(0xFFC62828);
+    case '困难':
+      return const Color(0xFFE65100);
+    case '中等':
+      return const Color(0xFF0B4CFF);
+    case '简单':
+      return const Color(0xFF2E7D32);
+    default:
+      return const Color(0xFF455A64);
   }
 }
 
 Color _diffKiller(String diff) {
   switch (diff) {
-    case '入门': return const Color(0xFF2E7D32);
-    case '困难': return const Color(0xFFC62828);
-    default: return const Color(0xFF0B4CFF); // 中等
+    case '入门':
+      return const Color(0xFF2E7D32);
+    case '困难':
+      return const Color(0xFFC62828);
+    default:
+      return const Color(0xFF0B4CFF); // 中等
   }
 }
 
@@ -98,6 +107,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    setSoftInputMode('nothing');
     WidgetsBinding.instance.addObserver(this);
     if (kIsWeb) {
       _webPlayer.setVolume(0.8);
@@ -110,7 +120,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       if (!_gameOver && !_isSolved && _seconds > 3) _autoSave();
     }
   }
@@ -125,7 +136,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       final go = await showDialog<bool>(
         context: context,
         builder: (ctx) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: SizedBox(
             width: 300,
             child: Padding(
@@ -133,50 +146,68 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.cloud_download_rounded, size: 44, color: Color(0xFF0B4CFF)),
+                  const Icon(
+                    Icons.cloud_download_rounded,
+                    size: 44,
+                    color: Color(0xFF0B4CFF),
+                  ),
                   const SizedBox(height: 14),
-                  const Text('发现存档', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                  const Text(
+                    '发现存档',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     '您有一个存档\n($savedAt)\n是否继续上次的游戏？',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF78909C), height: 1.5),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF78909C),
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          side: BorderSide(color: Colors.grey[300]!),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text(
+                            '新游戏',
+                            style: TextStyle(color: Color(0xFF455A64)),
+                          ),
                         ),
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('新游戏', style: TextStyle(color: Color(0xFF455A64))),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: const Color(0xFF0B4CFF),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          elevation: 0,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: const Color(0xFF0B4CFF),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('继续'),
                         ),
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('继续'),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
       );
       if (go == true && mounted) {
         _restoreFromData(res);
@@ -192,7 +223,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       final files = ['failed.mp3', 'Placement.mp3'];
       for (final name in files) {
         final data = await rootBundle.load('assets/audio/$name');
-        await File('${Directory.systemTemp.path}/$name').writeAsBytes(data.buffer.asUint8List());
+        await File(
+          '${Directory.systemTemp.path}/$name',
+        ).writeAsBytes(data.buffer.asUint8List());
       }
     } catch (_) {}
   }
@@ -200,6 +233,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    setSoftInputMode('resize');
     _timer?.cancel();
     _statusTimer?.cancel();
     if (kIsWeb) _webPlayer.dispose();
@@ -211,10 +245,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   void _autoSave() {
     if (!_dirty) return;
     try {
-      final cagesJson = _puzzle.cages?.map((c) => {
-        'cellIndices': c.cellIndices,
-        'sum': c.sum,
-      }).toList();
+      final cagesJson = _puzzle.cages
+          ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum})
+          .toList();
       ApiService.saveGame(
         username: widget.username,
         boardSize: _boardSize,
@@ -255,12 +288,15 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     if (kIsWeb) {
       _webPlayer.play(AssetSource('audio/Placement.mp3'));
     } else {
-      _clickChannel.invokeMethod('play_placement', '${Directory.systemTemp.path}/Placement.mp3');
+      _clickChannel.invokeMethod(
+        'play_placement',
+        '${Directory.systemTemp.path}/Placement.mp3',
+      );
     }
   }
 
   void _success() {
-    _tap();  // 轻触感
+    _tap(); // 轻触感
     if (kIsWeb) {
       _webPlayer.play(AssetSource('audio/success.wav'));
     } else {
@@ -282,7 +318,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     String diff = diffs.first;
     for (int i = 0; i < weights.length; i++) {
       roll -= weights[i];
-      if (roll < 0) { diff = diffs[i]; break; }
+      if (roll < 0) {
+        diff = diffs[i];
+        break;
+      }
     }
 
     final range = ranges[diff]!;
@@ -316,11 +355,19 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     if (_isKiller) {
       // 杀手难度正态分布：入门25%、中等50%、困难25%
       final diffRoll = _rng.nextInt(100);
-      _killerDifficulty = diffRoll < 25 ? '入门' : diffRoll < 75 ? '中等' : '困难';
-      _puzzle = SudokuGenerator(boardSize: 3).generateKiller(difficulty: _killerDifficulty);
+      _killerDifficulty = diffRoll < 25
+          ? '入门'
+          : diffRoll < 75
+          ? '中等'
+          : '困难';
+      _puzzle = SudokuGenerator(
+        boardSize: 3,
+      ).generateKiller(difficulty: _killerDifficulty);
     } else {
       _pickClueCount();
-      _puzzle = SudokuGenerator(boardSize: _boardSize).generate(clues: _clueCount);
+      _puzzle = SudokuGenerator(
+        boardSize: _boardSize,
+      ).generate(clues: _clueCount);
     }
     _generating = false;
     _isSolved = false;
@@ -332,6 +379,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _paused = false;
     _statusMsg = '';
     _lastScore = 0;
+    _seconds = 0;
     _undoStack.clear();
     _redoStack.clear();
     _boardKey = GlobalKey();
@@ -341,7 +389,6 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   void _startTimer() {
     _timer?.cancel();
-    _seconds = 0;
     _paused = false;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && !_paused) setState(() => _seconds++);
@@ -367,11 +414,16 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     if (_paused || _gameOver) return;
     _dirty = true;
     _playPlacement();
-    _undoStack.add(_UndoEntry(
-      r: r, c: c,
-      oldVal: oldVal, oldNotes: Set<int>.from(oldNotes),
-      newVal: newVal, newNotes: <int>{},
-    ));
+    _undoStack.add(
+      _UndoEntry(
+        r: r,
+        c: c,
+        oldVal: oldVal,
+        oldNotes: Set<int>.from(oldNotes),
+        newVal: newVal,
+        newNotes: <int>{},
+      ),
+    );
     if (_undoStack.length > 50) _undoStack.removeAt(0);
     _redoStack.clear();
     // 常规：对照答案判错；杀手：检查冲突（重复/笼子和值超限）
@@ -383,11 +435,16 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       if (_errors >= _maxErrors) {
         _timer?.cancel();
         _textFocus.unfocus();
-        if (!kIsWeb) { SystemChannels.textInput.invokeMethod('TextInput.hide'); }
+        if (!kIsWeb) {
+          SystemChannels.textInput.invokeMethod('TextInput.hide');
+        }
         if (kIsWeb) {
           _webPlayer.play(AssetSource('audio/failed.mp3'));
         } else {
-          _clickChannel.invokeMethod('play_failed', '${Directory.systemTemp.path}/failed.mp3');
+          _clickChannel.invokeMethod(
+            'play_failed',
+            '${Directory.systemTemp.path}/failed.mp3',
+          );
         }
         _submitScore(won: false); // 提交失败记录
         _lastScore = _calculateScore();
@@ -403,18 +460,25 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     // 填满所有格子时自动收起键盘
     if (newVal != 0 && _puzzle.isComplete()) {
       _textFocus.unfocus();
-      if (!kIsWeb) { SystemChannels.textInput.invokeMethod('TextInput.hide'); }
+      if (!kIsWeb) {
+        SystemChannels.textInput.invokeMethod('TextInput.hide');
+      }
     }
   }
 
   void _onNoteChanged(int r, int c, Set<int> oldNotes, Set<int> newNotes) {
     if (_paused || _gameOver) return;
     _dirty = true;
-    _undoStack.add(_UndoEntry(
-      r: r, c: c,
-      oldVal: 0, oldNotes: Set<int>.from(oldNotes),
-      newVal: 0, newNotes: Set<int>.from(newNotes),
-    ));
+    _undoStack.add(
+      _UndoEntry(
+        r: r,
+        c: c,
+        oldVal: 0,
+        oldNotes: Set<int>.from(oldNotes),
+        newVal: 0,
+        newNotes: Set<int>.from(newNotes),
+      ),
+    );
     if (_undoStack.length > 50) _undoStack.removeAt(0);
     _redoStack.clear();
   }
@@ -426,11 +490,16 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final entry = _undoStack.removeLast();
     final currentVal = _puzzle.cells[entry.r][entry.c];
     final currentNotes = Set<int>.from(_puzzle.notes[entry.r][entry.c]);
-    _redoStack.add(_UndoEntry(
-      r: entry.r, c: entry.c,
-      oldVal: currentVal, oldNotes: currentNotes,
-      newVal: entry.oldVal, newNotes: Set<int>.from(entry.oldNotes),
-    ));
+    _redoStack.add(
+      _UndoEntry(
+        r: entry.r,
+        c: entry.c,
+        oldVal: currentVal,
+        oldNotes: currentNotes,
+        newVal: entry.oldVal,
+        newNotes: Set<int>.from(entry.oldNotes),
+      ),
+    );
     setState(() {
       _puzzle.cells[entry.r][entry.c] = entry.oldVal;
       _puzzle.notes[entry.r][entry.c] = Set<int>.from(entry.oldNotes);
@@ -445,11 +514,16 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final entry = _redoStack.removeLast();
     final currentVal = _puzzle.cells[entry.r][entry.c];
     final currentNotes = Set<int>.from(_puzzle.notes[entry.r][entry.c]);
-    _undoStack.add(_UndoEntry(
-      r: entry.r, c: entry.c,
-      oldVal: currentVal, oldNotes: currentNotes,
-      newVal: entry.oldVal, newNotes: Set<int>.from(entry.oldNotes),
-    ));
+    _undoStack.add(
+      _UndoEntry(
+        r: entry.r,
+        c: entry.c,
+        oldVal: currentVal,
+        oldNotes: currentNotes,
+        newVal: entry.oldVal,
+        newNotes: Set<int>.from(entry.oldNotes),
+      ),
+    );
     setState(() {
       _puzzle.cells[entry.r][entry.c] = entry.oldVal;
       _puzzle.notes[entry.r][entry.c] = Set<int>.from(entry.oldNotes);
@@ -482,31 +556,60 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }
 
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent)
+      return KeyEventResult.ignored;
     if (_paused || _gameOver) return KeyEventResult.ignored;
 
     // 数字键 1-9（主键盘和小键盘）
     int? n;
-    if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) {n = 1;}
-    else if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) {n = 2;}
+    if (event.logicalKey == LogicalKeyboardKey.digit1 ||
+        event.logicalKey == LogicalKeyboardKey.numpad1) {
+      n = 1;
+    } else if (event.logicalKey == LogicalKeyboardKey.digit2 ||
+        event.logicalKey == LogicalKeyboardKey.numpad2) {
+      n = 2;
+    }
     // ignore: curly_braces_in_flow_control_structures
-    else if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) {n = 3;}
-    else if (event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) {n = 4;}
-    else if (event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) {n = 5;}
-    else if (event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) {n = 6;}
-    else if (event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) {n = 7;}
-    else if (event.logicalKey == LogicalKeyboardKey.digit8 || event.logicalKey == LogicalKeyboardKey.numpad8) {n = 8;}
-    else if (event.logicalKey == LogicalKeyboardKey.digit9 || event.logicalKey == LogicalKeyboardKey.numpad9) {n = 9;}
+    else if (event.logicalKey == LogicalKeyboardKey.digit3 ||
+        event.logicalKey == LogicalKeyboardKey.numpad3) {
+      n = 3;
+    } else if (event.logicalKey == LogicalKeyboardKey.digit4 ||
+        event.logicalKey == LogicalKeyboardKey.numpad4) {
+      n = 4;
+    } else if (event.logicalKey == LogicalKeyboardKey.digit5 ||
+        event.logicalKey == LogicalKeyboardKey.numpad5) {
+      n = 5;
+    } else if (event.logicalKey == LogicalKeyboardKey.digit6 ||
+        event.logicalKey == LogicalKeyboardKey.numpad6) {
+      n = 6;
+    } else if (event.logicalKey == LogicalKeyboardKey.digit7 ||
+        event.logicalKey == LogicalKeyboardKey.numpad7) {
+      n = 7;
+    } else if (event.logicalKey == LogicalKeyboardKey.digit8 ||
+        event.logicalKey == LogicalKeyboardKey.numpad8) {
+      n = 8;
+    } else if (event.logicalKey == LogicalKeyboardKey.digit9 ||
+        event.logicalKey == LogicalKeyboardKey.numpad9) {
+      n = 9;
+    }
 
     // 4×4 模式字母键 A-G（对应 10-16）
     if (n == null && _boardSize == 4) {
-      if (event.logicalKey == LogicalKeyboardKey.keyA)  {n = 10;}
-      else if (event.logicalKey == LogicalKeyboardKey.keyB) {n = 11;}
-      else if (event.logicalKey == LogicalKeyboardKey.keyC) {n = 12;}
-      else if (event.logicalKey == LogicalKeyboardKey.keyD) {n = 13;}
-      else if (event.logicalKey == LogicalKeyboardKey.keyE) {n = 14;}
-      else if (event.logicalKey == LogicalKeyboardKey.keyF) {n = 15;}
-      else if (event.logicalKey == LogicalKeyboardKey.keyG) {n = 16;}
+      if (event.logicalKey == LogicalKeyboardKey.keyA) {
+        n = 10;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyB) {
+        n = 11;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyC) {
+        n = 12;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyD) {
+        n = 13;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyE) {
+        n = 14;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+        n = 15;
+      } else if (event.logicalKey == LogicalKeyboardKey.keyG) {
+        n = 16;
+      }
     }
 
     if (n != null) {
@@ -560,7 +663,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       for (int r = 0; r < gs; r++) {
         for (int c = 0; c < gs; c++) {
           _puzzle.cells[r][c] = _puzzle.solution[r][c];
-        }        
+        }
       }
     });
     _syncErrorState();
@@ -592,10 +695,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   /// 保存当前游戏进度到服务器
   Future<void> _saveGame({bool silent = false}) async {
     try {
-      final cagesJson = _puzzle.cages?.map((c) => {
-        'cellIndices': c.cellIndices,
-        'sum': c.sum,
-      }).toList();
+      final cagesJson = _puzzle.cages
+          ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum})
+          .toList();
 
       await ApiService.saveGame(
         username: widget.username,
@@ -631,58 +733,78 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       final go = await showDialog<bool>(
         context: context,
         builder: (ctx) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: SizedBox(
             width: 300,
             child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.cloud_download_rounded, size: 44, color: Color(0xFF0B4CFF)),
-                const SizedBox(height: 14),
-                const Text('加载存档', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                Text(
-                  '存档时间\n$savedAt\n当前未保存的进度将丢失。',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF78909C), height: 1.5),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          side: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('取消', style: TextStyle(color: Color(0xFF455A64))),
-                      ),
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.cloud_download_rounded,
+                    size: 44,
+                    color: Color(0xFF0B4CFF),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    '加载存档',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '存档时间\n$savedAt\n当前未保存的进度将丢失。',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF78909C),
+                      height: 1.5,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: const Color(0xFF0B4CFF),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          elevation: 0,
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text(
+                            '取消',
+                            style: TextStyle(color: Color(0xFF455A64)),
+                          ),
                         ),
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('加载'),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: const Color(0xFF0B4CFF),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('加载'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
       );
       _textFocus.unfocus();
       if (go != true || !mounted) return;
@@ -765,26 +887,38 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   int _standardTime() {
     if (_boardSize == 4) {
       switch (_difficulty) {
-        case '简单': return 3600;
-        case '中等': return 7200;
-        case '困难': return 14400;
-        default: return 7200;
+        case '简单':
+          return 3600;
+        case '中等':
+          return 7200;
+        case '困难':
+          return 14400;
+        default:
+          return 7200;
       }
     }
     if (_isKiller) {
       switch (_killerDifficulty) {
-        case '入门': return 2400;
-        case '中等': return 4800;
-        case '困难': return 9600;
-        default: return 4800;
+        case '入门':
+          return 2400;
+        case '中等':
+          return 4800;
+        case '困难':
+          return 9600;
+        default:
+          return 4800;
       }
     }
     switch (_difficulty) {
-      case '简单': return 1800;
-      case '中等': return 3600;
+      case '简单':
+        return 1800;
+      case '中等':
+        return 3600;
       case '困难':
-      case '极简': return 7200;
-      default: return 3600;
+      case '极简':
+        return 7200;
+      default:
+        return 3600;
     }
   }
 
@@ -793,11 +927,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     // 基础分 × 模式系数（已合并到基础分）
     double base;
     if (_isKiller) {
-      base = 200;       // 杀手 ×2.0
+      base = 200; // 杀手 ×2.0
     } else if (_boardSize == 4) {
-      base = 250;       // 16×16 ×2.5
+      base = 250; // 16×16 ×2.5
     } else {
-      base = 100;       // 9×9 常规 ×1.0
+      base = 100; // 9×9 常规 ×1.0
     }
 
     // 难度系数
@@ -867,9 +1001,12 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _clickChannel.invokeMethod('vibrate');
     // 收起手机键盘，防止菜单关闭后键盘弹出
     _textFocus.unfocus();
-    try { SystemChannels.textInput.invokeMethod('TextInput.hide'); } catch (_) {}
+    try {
+      SystemChannels.textInput.invokeMethod('TextInput.hide');
+    } catch (_) {}
 
-    final RenderBox? box = _menuIconKey.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox? box =
+        _menuIconKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     final pos = box.localToGlobal(Offset.zero);
     final size = box.size;
@@ -897,7 +1034,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
             children: [
               const Text('3×3 杀手', style: TextStyle(fontSize: 13)),
               const SizedBox(width: 18),
-              if (isKillerSelected) const Icon(Icons.check, size: 14, color: _blue),
+              if (isKillerSelected)
+                const Icon(Icons.check, size: 14, color: _blue),
             ],
           ),
         ),
@@ -945,11 +1083,13 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }
 
   void _showMsg(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: const TextStyle()),
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 2),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle()),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   /// 在状态栏显示消息（棋盘上方），2秒后自动清除
@@ -967,16 +1107,14 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     for (int r = 0; r < gs; r++) {
       for (int c = 0; c < gs; c++) {
         if (_puzzle.cells[r][c] == 0) n++;
-      }      
+      }
     }
     return n;
   }
 
   @override
   Widget build(BuildContext context) {
-    final infoStyle = TextStyle(
-      fontSize: 13, fontWeight: FontWeight.w500,
-    );
+    final infoStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w500);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -987,11 +1125,18 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           child: GestureDetector(
             key: _menuIconKey,
             onTap: () => _showModeMenu(),
-            child: const Icon(Icons.more_horiz, color: Color(0xFF78909C), size: 24),
+            child: const Icon(
+              Icons.more_horiz,
+              color: Color(0xFF78909C),
+              size: 24,
+            ),
           ),
         ),
         leadingWidth: 40,
-        title: Text('数独', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          '数独',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
         centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
@@ -1000,7 +1145,12 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
-              onTap: _paused || _gameOver ? null : () { _click(); setState(() => _noteMode = !_noteMode); },
+              onTap: _paused || _gameOver
+                  ? null
+                  : () {
+                      _click();
+                      setState(() => _noteMode = !_noteMode);
+                    },
               child: Icon(
                 _noteMode ? Icons.edit_note : Icons.edit_note_outlined,
                 color: _noteMode ? _blue : const Color(0xFF78909C),
@@ -1014,133 +1164,173 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       body: Focus(
         onKeyEvent: _onKeyEvent,
         child: Stack(
-        children: [
-          // 隐藏输入框放在最上层（确保可聚焦）
-          Positioned(
-            top: 0, left: 0, right: 0,
-            child: SizedBox(
-              height: 48,
-              child: TextField(
-                controller: _textController,
-                focusNode: _textFocus,
-                keyboardType: TextInputType.text,
-                textInputAction: TextInputAction.done,
-                showCursor: false,
-                enableInteractiveSelection: false,
-                style: const TextStyle(fontSize: 16, color: Colors.transparent),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onChanged: (v) {
-                  final clean = _boardSize == 3
-                      ? v.replaceAll(RegExp(r'[^1-9]'), '')
-                      : v.toUpperCase().replaceAll(RegExp(r'[^1-9A-G]'), '');
-                  if (clean.isNotEmpty) {
-                    final ch = clean.substring(clean.length - 1);
-                    final n = ch.codeUnitAt(0);
-                    final val = n >= 65 ? n - 65 + 10 : int.parse(ch);
-                    _boardKey.currentState?.fillNumber(val);
-                  }
-                  _textController.clear();
-                },
-              ),
-            ),
-          ),
-          Column(
           children: [
-            const Divider(height: 1, thickness: 0.5),
-            // 计数栏（大标题正下方）
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 14,
-                      color: _errors >= _maxErrors ? _red : const Color(0xFF78909C)),
-                  const SizedBox(width: 4),
-                  Text('$_errors/$_maxErrors', style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w500,
-                    color: _errors >= _maxErrors ? _red : const Color(0xFF455A64),
-                  )),
-                  const SizedBox(width: 24),
-                  GestureDetector(
-                    onTap: (_gameOver || _hasGivenUp) ? null : _togglePause,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _paused ? Icons.play_arrow : Icons.pause,
-                          size: 14,
-                          color: (_gameOver || _hasGivenUp) ? Colors.grey[350]! : _blue,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(_formatTime(_seconds), style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500,
-                          color: (_gameOver || _hasGivenUp) ? Colors.grey[350]! : const Color(0xFF455A64),
-                        )),
-                      ],
-                    ),
+            // 隐藏输入框放在最上层（确保可聚焦）
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SizedBox(
+                height: 48,
+                child: TextField(
+                  controller: _textController,
+                  focusNode: _textFocus,
+                  keyboardType: _boardSize == 3
+                      ? TextInputType.number
+                      : TextInputType.text,
+                  obscureText: _boardSize == 3,
+                  textInputAction: TextInputAction.done,
+                  showCursor: false,
+                  enableInteractiveSelection: false,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.transparent,
                   ),
-                  const SizedBox(width: 24),
-                  Text(_isKiller ? _killerDifficulty : _difficulty, style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w600,
-                    color: _isKiller ? _diffKiller(_killerDifficulty) : _diffColor(_difficulty),
-                  )),
-                  const SizedBox(width: 4),
-                  Text('${_cluesRemaining()}空', style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF455A64),
-                  )),
-                ],
-              ),
-            ),
-
-            // 棋盘（固定正方形，可滚动防溢出）
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: LayoutBuilder(
-                  builder: (_, constraints) {
-                    final size = constraints.maxWidth;
-                    return SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: size,
-                            height: size,
-                            child: SudokuBoard(
-                              key: _boardKey,
-                              puzzle: _puzzle,
-                              noteMode: _noteMode,
-                              readOnly: _paused || _gameOver,
-                              onCellChanged: _onCellChanged,
-                              onNoteChanged: _onNoteChanged,
-                              onRefresh: () => setState(() {}),
-                              onRequestInput: () {
-                                _textFocus.requestFocus();
-                                if (!kIsWeb) {
-                                  SystemChannels.textInput.invokeMethod('TextInput.show');
-                                }
-                              },
-                            ),
-                          ),
-                          Container(
-                            height: 28,
-                            alignment: Alignment.center,
-                            child: _buildStatus(),
-                          ),
-                        ],
-                      ),
-                    );
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  onChanged: (v) {
+                    final clean = _boardSize == 3
+                        ? v.replaceAll(RegExp(r'[^1-9]'), '')
+                        : v.toUpperCase().replaceAll(RegExp(r'[^1-9A-G]'), '');
+                    if (clean.isNotEmpty) {
+                      final ch = clean.substring(clean.length - 1);
+                      final n = ch.codeUnitAt(0);
+                      final val = n >= 65 ? n - 65 + 10 : int.parse(ch);
+                      _boardKey.currentState?.fillNumber(val);
+                    }
+                    _textController.clear();
                   },
                 ),
               ),
             ),
+            Column(
+              children: [
+                const Divider(height: 1, thickness: 0.5),
+                // 计数栏（大标题正下方）
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 14,
+                        color: _errors >= _maxErrors
+                            ? _red
+                            : const Color(0xFF78909C),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_errors/$_maxErrors',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: _errors >= _maxErrors
+                              ? _red
+                              : const Color(0xFF455A64),
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      GestureDetector(
+                        onTap: (_gameOver || _hasGivenUp) ? null : _togglePause,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _paused ? Icons.play_arrow : Icons.pause,
+                              size: 14,
+                              color: (_gameOver || _hasGivenUp)
+                                  ? Colors.grey[350]!
+                                  : _blue,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              _formatTime(_seconds),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: (_gameOver || _hasGivenUp)
+                                    ? Colors.grey[350]!
+                                    : const Color(0xFF455A64),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Text(
+                        _isKiller ? _killerDifficulty : _difficulty,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _isKiller
+                              ? _diffKiller(_killerDifficulty)
+                              : _diffColor(_difficulty),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_cluesRemaining()}空',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF455A64),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 棋盘（固定正方形，可滚动防溢出）
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: LayoutBuilder(
+                      builder: (_, constraints) {
+                        final size = constraints.maxWidth;
+                        return SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: size,
+                                height: size,
+                                child: SudokuBoard(
+                                  key: _boardKey,
+                                  puzzle: _puzzle,
+                                  noteMode: _noteMode,
+                                  readOnly: _paused || _gameOver,
+                                  onCellChanged: _onCellChanged,
+                                  onNoteChanged: _onNoteChanged,
+                                  onRefresh: () => setState(() {}),
+                                  onRequestInput: () {
+                                    _textFocus.requestFocus();
+                                    if (!kIsWeb) {
+                                      SystemChannels.textInput.invokeMethod(
+                                        'TextInput.show',
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                              Container(
+                                height: 28,
+                                alignment: Alignment.center,
+                                child: _buildStatus(),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-        ],
-      ),
       ),
     );
   }
@@ -1148,19 +1338,28 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   Widget _buildStatus() {
     final style = TextStyle(fontSize: 13, fontWeight: FontWeight.w500);
     if (_isSolved) {
-      return Text('解答正确！用时 ${_formatTime(_seconds)}，获得 $_lastScore 积分', style: style.copyWith(color: Colors.green));
+      return Text(
+        '解答正确！用时 ${_formatTime(_seconds)}，获得 $_lastScore 积分',
+        style: style.copyWith(color: Colors.green),
+      );
     }
     if (_hasGivenUp) {
       return Text('已查看答案', style: style.copyWith(color: Colors.orange));
     }
     if (_gameOver) {
-      return Text('错误 $_errors 次，游戏结束，用时 ${_formatTime(_seconds)}，获得 $_lastScore 积分', style: style.copyWith(color: _red));
+      return Text(
+        '错误 $_errors 次，游戏结束，用时 ${_formatTime(_seconds)}，获得 $_lastScore 积分',
+        style: style.copyWith(color: _red),
+      );
     }
     if (_paused) {
       return Text('已暂停', style: style.copyWith(color: const Color(0xFF455A64)));
     }
     if (_statusMsg.isNotEmpty) {
-      return Text(_statusMsg, style: style.copyWith(color: const Color(0xFF455A64)));
+      return Text(
+        _statusMsg,
+        style: style.copyWith(color: const Color(0xFF455A64)),
+      );
     }
     return const SizedBox.shrink();
   }
@@ -1179,25 +1378,70 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                  _textBtn('新局', _newGame, s),
-                  _textBtn('完成', (disabled || _isSolved || _hasGivenUp) ? null : _checkCompletion, s, fill: true),
-                  _textBtn('求解', (disabled || _isSolved || _hasGivenUp) ? null : _autoSolve, s),
-                ]),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _textBtn('新局', _newGame, s),
+                    _textBtn(
+                      '完成',
+                      (disabled || _isSolved || _hasGivenUp)
+                          ? null
+                          : _checkCompletion,
+                      s,
+                      fill: true,
+                    ),
+                    _textBtn(
+                      '求解',
+                      (disabled || _isSolved || _hasGivenUp)
+                          ? null
+                          : _autoSolve,
+                      s,
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 6),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                  _iconTextBtn(Icons.undo, '撤销', disabled ? null : (_undoStack.isEmpty ? null : _undo), s),
-                  _iconTextBtn(Icons.replay, '重置', _restart, s),
-                  _iconTextBtn(Icons.redo, '重做', disabled ? null : (_redoStack.isEmpty ? null : _redo), s),
-                ]),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _iconTextBtn(
+                      Icons.undo,
+                      '撤销',
+                      disabled ? null : (_undoStack.isEmpty ? null : _undo),
+                      s,
+                    ),
+                    _iconTextBtn(Icons.replay, '重置', _restart, s),
+                    _iconTextBtn(
+                      Icons.redo,
+                      '重做',
+                      disabled ? null : (_redoStack.isEmpty ? null : _redo),
+                      s,
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 6),
-                const Divider(height: 1, thickness: 0.5, indent: 40, endIndent: 40),
+                const Divider(
+                  height: 1,
+                  thickness: 0.5,
+                  indent: 40,
+                  endIndent: 40,
+                ),
                 const SizedBox(height: 6),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  _iconTextBtn(Icons.cloud_upload, '存档', () { _click(); _saveGame(); }, s),
-                  Container(width: 1, height: 24, color: Colors.grey[300], margin: const EdgeInsets.symmetric(horizontal: 24)),
-                  _iconTextBtn(Icons.cloud_download, '读档', _loadGame, s),
-                ]),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _iconTextBtn(Icons.cloud_upload, '存档', () {
+                      _click();
+                      _saveGame();
+                    }, s),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: Colors.grey[300],
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                    ),
+                    _iconTextBtn(Icons.cloud_download, '读档', _loadGame, s),
+                  ],
+                ),
               ],
             ),
           ),
@@ -1206,7 +1450,12 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _textBtn(String label, VoidCallback? onTap, TextStyle s, {bool fill = false}) {
+  Widget _textBtn(
+    String label,
+    VoidCallback? onTap,
+    TextStyle s, {
+    bool fill = false,
+  }) {
     final isDisabled = onTap == null;
     return Material(
       color: Colors.transparent,
@@ -1214,23 +1463,40 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Container(
-          width: 88, height: 44,
+          width: 88,
+          height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isDisabled ? Colors.grey[100]! : fill ? _blue : Colors.transparent,
+            color: isDisabled
+                ? Colors.grey[100]!
+                : fill
+                ? _blue
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Text(label, style: s.copyWith(
-            fontSize: 15,
-            fontWeight: fill ? FontWeight.w600 : FontWeight.w500,
-            color: isDisabled ? Colors.grey[350]! : fill ? Colors.white : const Color(0xFF455A64),
-          )),
+          child: Text(
+            label,
+            style: s.copyWith(
+              fontSize: 15,
+              fontWeight: fill ? FontWeight.w600 : FontWeight.w500,
+              color: isDisabled
+                  ? Colors.grey[350]!
+                  : fill
+                  ? Colors.white
+                  : const Color(0xFF455A64),
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _iconTextBtn(IconData icon, String label, VoidCallback? onTap, TextStyle s) {
+  Widget _iconTextBtn(
+    IconData icon,
+    String label,
+    VoidCallback? onTap,
+    TextStyle s,
+  ) {
     final isDisabled = onTap == null;
     final color = isDisabled ? Colors.grey[350]! : const Color(0xFF455A64);
     return Material(
@@ -1239,7 +1505,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Container(
-          width: 88, height: 44,
+          width: 88,
+          height: 44,
           alignment: Alignment.center,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

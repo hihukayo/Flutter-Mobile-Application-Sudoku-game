@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../services/window_util.dart';
+import '../services/app_snack.dart';
+import '../widgets/masked_text_controller.dart';
 import 'login_page.dart';
 
 String maskPhone(String phone) {
@@ -20,11 +23,10 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   String _serverAddress = '';
-  late final ScaffoldMessengerState _messenger = ScaffoldMessenger.of(context);
-
   @override
   void initState() {
     super.initState();
+    setSoftInputMode('resize');
     _loadServerAddress();
   }
 
@@ -33,21 +35,8 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _serverAddress = prefs.getString('server_address') ?? '');
   }
 
-  @override
-  void dispose() {
-    _messenger.clearSnackBars();
-    super.dispose();
-  }
-
   void _showSnack(String msg) {
-    _messenger
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(msg),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+    showAppSnack(msg);
   }
 
   @override
@@ -64,9 +53,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 icon: Icons.person,
                 title: '修改用户名',
                 subtitle: widget.username,
-                onTap: () => _showEditDialog('用户名', widget.username, (val, pwd) => ApiService.updateUsername(
-                  username: widget.username, newUsername: val, password: pwd,
-                )),
+                onTap: () => _showEditDialog(
+                  '用户名',
+                  widget.username,
+                  (val, pwd) => ApiService.updateUsername(
+                    username: widget.username,
+                    newUsername: val,
+                    password: pwd,
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               _buildCard(
@@ -80,15 +75,23 @@ class _SettingsPageState extends State<SettingsPage> {
                 icon: Icons.phone,
                 title: '修改手机号',
                 subtitle: maskPhone(widget.phone),
-                onTap: () => _showEditDialog('手机号', widget.phone, (val, pwd) => ApiService.updatePhone(
-                  username: widget.username, newPhone: val, password: pwd,
-                )),
+                onTap: () => _showEditDialog(
+                  '手机号',
+                  widget.phone,
+                  (val, pwd) => ApiService.updatePhone(
+                    username: widget.username,
+                    newPhone: val,
+                    password: pwd,
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               _buildCard(
                 icon: Icons.cloud_off,
                 title: '服务器地址',
-                subtitle: _serverAddress.isEmpty ? '自动（USB/模拟器）' : _serverAddress,
+                subtitle: _serverAddress.isEmpty
+                    ? '自动（USB/模拟器）'
+                    : _serverAddress,
                 onTap: _showServerAddressDialog,
               ),
               const SizedBox(height: 24),
@@ -107,7 +110,12 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildCard({required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+  Widget _buildCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
     return Card(
       child: ListTile(
         leading: Icon(icon),
@@ -119,7 +127,12 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildDangerCard({required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+  Widget _buildDangerCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
     return Card(
       child: ListTile(
         leading: Icon(icon, color: Colors.red),
@@ -142,7 +155,7 @@ class _SettingsPageState extends State<SettingsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '留空则使用默认（USB：localhost / 模拟器：10.0.2.2）',
+              '留空则自动连接（USB / 模拟器）',
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 12),
@@ -156,9 +169,16 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx, controller.text.trim());
+            },
             child: const Text('保存'),
           ),
         ],
@@ -173,9 +193,13 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  void _showEditDialog(String field, String current, Future<Map<String, dynamic>> Function(String value, String password) api) {
+  void _showEditDialog(
+    String field,
+    String current,
+    Future<Map<String, dynamic>> Function(String value, String password) api,
+  ) {
     final controller = TextEditingController();
-    final pwdController = TextEditingController();
+    final pwdController = MaskedTextController();
 
     showDialog(
       context: context,
@@ -186,26 +210,38 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             TextField(
               controller: controller,
-              decoration: InputDecoration(labelText: '请输入新$field', border: const OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: '请输入新$field',
+                border: const OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: pwdController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: '当前密码', border: OutlineInputBorder()),
+              enableSuggestions: false,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: '当前密码',
+                border: OutlineInputBorder(),
+              ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            child: const Text('取消'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final value = controller.text.trim();
-              if (value.isEmpty || pwdController.text.isEmpty) {
+              if (value.isEmpty || pwdController.realText.isEmpty) {
                 _showSnack('请输入新$field和当前密码');
                 return;
               }
-              final res = await api(value, pwdController.text);
+              final res = await api(value, pwdController.realText);
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
               _showSnack(res['message'] ?? '操作完成');
@@ -218,9 +254,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showPasswordDialog() {
-    final oldCtrl = TextEditingController();
-    final newCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
+    final oldCtrl = MaskedTextController();
+    final newCtrl = MaskedTextController();
+    final confirmCtrl = MaskedTextController();
 
     showDialog(
       context: context,
@@ -229,27 +265,58 @@ class _SettingsPageState extends State<SettingsPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: oldCtrl, obscureText: true, decoration: const InputDecoration(labelText: '当前密码', border: OutlineInputBorder())),
+            TextField(
+              controller: oldCtrl,
+              enableSuggestions: false,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: '当前密码',
+                border: OutlineInputBorder(),
+              ),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: newCtrl, obscureText: true, decoration: const InputDecoration(labelText: '新密码', border: OutlineInputBorder())),
+            TextField(
+              controller: newCtrl,
+              enableSuggestions: false,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: '新密码',
+                border: OutlineInputBorder(),
+              ),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: confirmCtrl, obscureText: true, decoration: const InputDecoration(labelText: '确认新密码', border: OutlineInputBorder())),
+            TextField(
+              controller: confirmCtrl,
+              enableSuggestions: false,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: '确认新密码',
+                border: OutlineInputBorder(),
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            child: const Text('取消'),
+          ),
           ElevatedButton(
             onPressed: () async {
-              if (newCtrl.text != confirmCtrl.text) {
+              if (newCtrl.realText != confirmCtrl.realText) {
                 _showSnack('两次密码不一致');
                 return;
               }
-              if (oldCtrl.text.isEmpty || newCtrl.text.isEmpty) {
+              if (oldCtrl.realText.isEmpty || newCtrl.realText.isEmpty) {
                 _showSnack('请填写完整');
                 return;
               }
               final res = await ApiService.updatePassword(
-                username: widget.username, oldPassword: oldCtrl.text, newPassword: newCtrl.text,
+                username: widget.username,
+                oldPassword: oldCtrl.realText,
+                newPassword: newCtrl.realText,
               );
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
@@ -264,42 +331,80 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showDeleteAccountDialog() {
     final phoneCtrl = TextEditingController();
-    final pwdCtrl = TextEditingController();
-    final confirmPwdCtrl = TextEditingController();
+    final pwdCtrl = MaskedTextController();
+    final confirmPwdCtrl = MaskedTextController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('注销账号', style: TextStyle(fontSize: 18, color: Colors.red)),
+        title: const Text(
+          '注销账号',
+          style: TextStyle(fontSize: 18, color: Colors.red),
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('此操作不可恢复，所有数据将被永久删除。', style: TextStyle(color: Colors.red, fontSize: 13)),
+              const Text(
+                '此操作不可恢复，所有数据将被永久删除。',
+                style: TextStyle(color: Colors.red, fontSize: 13),
+              ),
               const SizedBox(height: 16),
-              TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: '手机号', border: OutlineInputBorder())),
+              TextField(
+                controller: phoneCtrl,
+                decoration: const InputDecoration(
+                  labelText: '手机号',
+                  border: OutlineInputBorder(),
+                ),
+              ),
               const SizedBox(height: 12),
-              TextField(controller: pwdCtrl, obscureText: true, decoration: const InputDecoration(labelText: '密码', border: OutlineInputBorder())),
+              TextField(
+                controller: pwdCtrl,
+                enableSuggestions: false,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: '密码',
+                  border: OutlineInputBorder(),
+                ),
+              ),
               const SizedBox(height: 12),
-              TextField(controller: confirmPwdCtrl, obscureText: true, decoration: const InputDecoration(labelText: '确认密码', border: OutlineInputBorder())),
+              TextField(
+                controller: confirmPwdCtrl,
+                enableSuggestions: false,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: '确认密码',
+                  border: OutlineInputBorder(),
+                ),
+              ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            child: const Text('取消'),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
-              if (pwdCtrl.text != confirmPwdCtrl.text) {
+              if (pwdCtrl.realText != confirmPwdCtrl.realText) {
                 _showSnack('两次密码不一致');
                 return;
               }
-              if (phoneCtrl.text.trim().isEmpty || pwdCtrl.text.isEmpty) {
+              if (phoneCtrl.text.trim().isEmpty || pwdCtrl.realText.isEmpty) {
                 _showSnack('请填写手机号和密码');
                 return;
               }
               final res = await ApiService.deleteAccount(
-                username: widget.username, phone: phoneCtrl.text.trim(), password: pwdCtrl.text,
+                username: widget.username,
+                phone: phoneCtrl.text.trim(),
+                password: pwdCtrl.realText,
               );
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
@@ -309,7 +414,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 await prefs.remove('login_username');
                 await prefs.remove('login_phone');
                 if (!context.mounted) return;
-                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (_) => false);
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (_) => false,
+                );
               } else {
                 _showSnack(res['message'] ?? '操作失败');
               }

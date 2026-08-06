@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_page.dart';
 import 'screens/home_page.dart';
 import 'services/api_service.dart';
+import 'services/app_snack.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const SplashScreen(),
+      scaffoldMessengerKey: appMessengerKey,
       debugShowCheckedModeBanner: false,
     );
   }
