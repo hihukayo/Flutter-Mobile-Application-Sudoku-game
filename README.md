@@ -27,12 +27,14 @@ Flutter 数独移动应用，支持用户登录注册、经典/杀手数独、�
 ## 🛠 技术栈
 
 <div align="center">
+
 | 层级 | 技术 |
 | --- | --- |
 | 前端 | Flutter (Dart) |
 | 后端 | Go（[go-sudoku-backend](https://github.com/hihukayo/go-sudoku-backend.git)） |
 | 数据库 | MySQL |
 | 音效 | Android AudioTrack / MediaPlayer / audioplayers (Web) |
+
 </div>
 
 ---
@@ -42,12 +44,14 @@ Flutter 数独移动应用，支持用户登录注册、经典/杀手数独、�
 ### 环境要求
 
 <div align="center">
+
 | 工具 | 版本要求 |
 | --- | --- |
 | Flutter | ^3.12 |
 | Dart SDK | ^3.12 |
 | MySQL | 8.0+ |
 | Go | 1.22+（编译 go-sudoku-backend 后端） |
+
 </div>
 
 ### 一键启动
@@ -199,7 +203,9 @@ flutter build apk --release  # 发布版
 所有接口位于 `http://127.0.0.1:8080/api/`，请求/响应均为 JSON。
 
 ### 用户系统
+
 <div align="center">
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/register` | 注册 `{username, phone, password}` |
@@ -208,30 +214,40 @@ flutter build apk --release  # 发布版
 | PUT | `/api/user/update-password` | 修改密码 |
 | PUT | `/api/user/update-phone` | 修改手机号 |
 | DELETE | `/api/user/delete` | 注销账号 |
+
 </div>
 
 ### 存档系统
+
 <div align="center">
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/save` | 保存游戏进度 |
 | GET | `/api/load?username=xxx` | 加载最近存档 |
+
 </div>
 
 ### 排行榜
+
 <div align="center">
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/rank/submit` | 提交游戏结果（含积分） |
 | GET | `/api/rank/list` | 排行榜（总积分降序） |
 | GET | `/api/rank/user?username=xxx` | 个人统计 |
+
 </div>
 ### 头像
+
 <div align="center">
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | PUT | `/api/avatar` | 上传头像（base64，服务器持久化） |
 | GET | `/api/avatar?username=xxx` | 获取头像（base64） |
+
 </div>
 
 ---
@@ -253,21 +269,27 @@ flutter build apk --release  # 发布版
 ```
 
 **基础分（含模式系数）：**
+
 <div align="center">
+
 | 模式 | 基础分 |
 |------|--------|
 | 9×9 常规 | 100 |
 | 9×9 杀手 | 200 |
 | 16×16 常规 | 250 |
+
 </div>
 
 **难度系数：**
+
 <div align="center">
+
 | 难度 | 系数 |
 |------|------|
 | 简单 / 入门 | 1.0 |
 | 中等 | 1.5 |
 | 困难 / 极简 | 2.0 |
+
 </div>
 
 **时间加成：**
@@ -316,11 +338,13 @@ flutter build apk --release  # 发布版
 ### 难度分布（正态随机）
 
 <div align="center">
+
 | 难度 | 出现概率 | 2格 | 3格 | 4格 | 5格 |
 | --- | --- | --- | --- | --- | --- |
 | 🟢 入门 | ~25% | 60% | 35% | 5% | 0% |
 | 🔵 中等 | ~50% | 40% | 35% | 15% | 10% |
 | 🔴 困难 | ~25% | 30% | 30% | 20% | 20% |
+
 </div>
 
 ### 笼子形状
@@ -331,6 +355,7 @@ flutter build apk --release  # 发布版
 ## 🔊 音效与反馈
 
 <div align="center">
+
 | 操作 | Android | Web |
 |------|---------|-----|
 | 按钮点击 | 80ms 震动 + 1200Hz 正弦波 | `click.wav` |
@@ -338,6 +363,7 @@ flutter build apk --release  # 发布版
 | 完成游戏 | 震动 + 上扬滑音 600→1200Hz | `success.wav` |
 | 错误满 3 次 | 震动 + `failed.mp3` | `failed.mp3` |
 | 撤销 / 重做 | 震动 + 按钮点击音 | `click.wav` |
+
 </div>
 
 - 震动通过 Android Vibrator 原生接口（需 `VIBRATE` 权限）
@@ -353,22 +379,26 @@ flutter build apk --release  # 发布版
 ### 3×3（81 格）
 
 <div align="center">
+
 | 难度 | 提示数 | 出现概率 | 说明 |
 | --- | --- | --- | --- |
 | 🟥 极简 | 17-22 | ~10% | 需高级技巧 |
 | 🟧 困难 | 23-28 | ~25% | 适合有经验玩家 |
 | 🟦 中等 | 29-32 | ~40% | 常见数独水平 |
 | 🟩 简单 | 33-36 | ~25% | 新手入门 |
+
 </div>
 
 ### 4×4（256 格）
 
 <div align="center">
+
 | 难度 | 提示数 | 出现概率 |
 | --- | --- | --- |
 | 🟧 困难 | 70-80 | ~25% |
 | 🟦 中等 | 92-105 | ~50% |
 | 🟩 简单 | 110-130 | ~25% |
+
 </div>
 
 ---
