@@ -239,6 +239,7 @@ flutter build apk --release  # 发布版
 | GET | `/api/rank/user?username=xxx` | 个人统计 |
 
 </div>
+
 ### 头像
 
 <div align="center">
