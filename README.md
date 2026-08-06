@@ -28,12 +28,28 @@ Flutter 数独移动应用，支持用户登录注册、经典/杀手数独、�
 
 <div align="center">
 
-| 层级 | 技术 |
-| --- | --- |
-| 前端 | Flutter (Dart) |
-| 后端 | Go（[go-sudoku-backend](https://github.com/hihukayo/go-sudoku-backend.git)） |
-| 数据库 | MySQL |
-| 音效 | Android AudioTrack / MediaPlayer / audioplayers (Web) |
+<table align="center" width="100%">
+  <tr>
+    <th>层级</th>
+    <th>技术</th>
+  </tr>
+  <tr>
+    <td>前端</td>
+    <td>Flutter (Dart)</td>
+  </tr>
+  <tr>
+    <td>后端</td>
+    <td>Go（<a href="https://github.com/hihukayo/go-sudoku-backend.git">go-sudoku-backend</a>）</td>
+  </tr>
+  <tr>
+    <td>数据库</td>
+    <td>MySQL</td>
+  </tr>
+  <tr>
+    <td>音效</td>
+    <td>Android AudioTrack / MediaPlayer / audioplayers (Web)</td>
+  </tr>
+</table>
 
 </div>
 
@@ -45,12 +61,28 @@ Flutter 数独移动应用，支持用户登录注册、经典/杀手数独、�
 
 <div align="center">
 
-| 工具 | 版本要求 |
-| --- | --- |
-| Flutter | ^3.12 |
-| Dart SDK | ^3.12 |
-| MySQL | 8.0+ |
-| Go | 1.22+（编译 go-sudoku-backend 后端） |
+<table align="center" width="100%">
+  <tr>
+    <th>工具</th>
+    <th>版本要求</th>
+  </tr>
+  <tr>
+    <td>Flutter</td>
+    <td>^3.12</td>
+  </tr>
+  <tr>
+    <td>Dart SDK</td>
+    <td>^3.12</td>
+  </tr>
+  <tr>
+    <td>MySQL</td>
+    <td>8.0+</td>
+  </tr>
+  <tr>
+    <td>Go</td>
+    <td>1.22+（编译 go-sudoku-backend 后端）</td>
+  </tr>
+</table>
 
 </div>
 
@@ -206,14 +238,43 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/register` | 注册 `{username, phone, password}` |
-| POST | `/api/login` | 登录 `{account, password}` |
-| PUT | `/api/user/update-username` | 修改用户名 |
-| PUT | `/api/user/update-password` | 修改密码 |
-| PUT | `/api/user/update-phone` | 修改手机号 |
-| DELETE | `/api/user/delete` | 注销账号 |
+<table align="center" width="100%">
+  <tr>
+    <th>方法</th>
+    <th>路径</th>
+    <th>说明</th>
+  </tr>
+  <tr>
+    <td>POST</td>
+    <td><code>/api/register</code></td>
+    <td>注册 <code>{username, phone, password}</code></td>
+  </tr>
+  <tr>
+    <td>POST</td>
+    <td><code>/api/login</code></td>
+    <td>登录 <code>{account, password}</code></td>
+  </tr>
+  <tr>
+    <td>PUT</td>
+    <td><code>/api/user/update-username</code></td>
+    <td>修改用户名</td>
+  </tr>
+  <tr>
+    <td>PUT</td>
+    <td><code>/api/user/update-password</code></td>
+    <td>修改密码</td>
+  </tr>
+  <tr>
+    <td>PUT</td>
+    <td><code>/api/user/update-phone</code></td>
+    <td>修改手机号</td>
+  </tr>
+  <tr>
+    <td>DELETE</td>
+    <td><code>/api/user/delete</code></td>
+    <td>注销账号</td>
+  </tr>
+</table>
 
 </div>
 
@@ -221,10 +282,23 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/save` | 保存游戏进度 |
-| GET | `/api/load?username=xxx` | 加载最近存档 |
+<table align="center" width="100%">
+  <tr>
+    <th>方法</th>
+    <th>路径</th>
+    <th>说明</th>
+  </tr>
+  <tr>
+    <td>POST</td>
+    <td><code>/api/save</code></td>
+    <td>保存游戏进度</td>
+  </tr>
+  <tr>
+    <td>GET</td>
+    <td><code>/api/load?username=xxx</code></td>
+    <td>加载最近存档</td>
+  </tr>
+</table>
 
 </div>
 
@@ -232,11 +306,28 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/rank/submit` | 提交游戏结果（含积分） |
-| GET | `/api/rank/list` | 排行榜（总积分降序） |
-| GET | `/api/rank/user?username=xxx` | 个人统计 |
+<table align="center" width="100%">
+  <tr>
+    <th>方法</th>
+    <th>路径</th>
+    <th>说明</th>
+  </tr>
+  <tr>
+    <td>POST</td>
+    <td><code>/api/rank/submit</code></td>
+    <td>提交游戏结果（含积分）</td>
+  </tr>
+  <tr>
+    <td>GET</td>
+    <td><code>/api/rank/list</code></td>
+    <td>排行榜（总积分降序）</td>
+  </tr>
+  <tr>
+    <td>GET</td>
+    <td><code>/api/rank/user?username=xxx</code></td>
+    <td>个人统计</td>
+  </tr>
+</table>
 
 </div>
 
@@ -244,10 +335,23 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| PUT | `/api/avatar` | 上传头像（base64，服务器持久化） |
-| GET | `/api/avatar?username=xxx` | 获取头像（base64） |
+<table align="center" width="100%">
+  <tr>
+    <th>方法</th>
+    <th>路径</th>
+    <th>说明</th>
+  </tr>
+  <tr>
+    <td>PUT</td>
+    <td><code>/api/avatar</code></td>
+    <td>上传头像（base64，服务器持久化）</td>
+  </tr>
+  <tr>
+    <td>GET</td>
+    <td><code>/api/avatar?username=xxx</code></td>
+    <td>获取头像（base64）</td>
+  </tr>
+</table>
 
 </div>
 
@@ -273,11 +377,24 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 模式 | 基础分 |
-|------|--------|
-| 9×9 常规 | 100 |
-| 9×9 杀手 | 200 |
-| 16×16 常规 | 250 |
+<table align="center" width="100%">
+  <tr>
+    <th>模式</th>
+    <th>基础分</th>
+  </tr>
+  <tr>
+    <td>9×9 常规</td>
+    <td>100</td>
+  </tr>
+  <tr>
+    <td>9×9 杀手</td>
+    <td>200</td>
+  </tr>
+  <tr>
+    <td>16×16 常规</td>
+    <td>250</td>
+  </tr>
+</table>
 
 </div>
 
@@ -285,11 +402,24 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 难度 | 系数 |
-|------|------|
-| 简单 / 入门 | 1.0 |
-| 中等 | 1.5 |
-| 困难 / 极简 | 2.0 |
+<table align="center" width="100%">
+  <tr>
+    <th>难度</th>
+    <th>系数</th>
+  </tr>
+  <tr>
+    <td>简单 / 入门</td>
+    <td>1.0</td>
+  </tr>
+  <tr>
+    <td>中等</td>
+    <td>1.5</td>
+  </tr>
+  <tr>
+    <td>困难 / 极简</td>
+    <td>2.0</td>
+  </tr>
+</table>
 
 </div>
 
@@ -340,11 +470,40 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 难度 | 出现概率 | 2格 | 3格 | 4格 | 5格 |
-| --- | --- | --- | --- | --- | --- |
-| 🟢 入门 | ~25% | 60% | 35% | 5% | 0% |
-| 🔵 中等 | ~50% | 40% | 35% | 15% | 10% |
-| 🔴 困难 | ~25% | 30% | 30% | 20% | 20% |
+<table align="center" width="100%">
+  <tr>
+    <th>难度</th>
+    <th>出现概率</th>
+    <th>2格</th>
+    <th>3格</th>
+    <th>4格</th>
+    <th>5格</th>
+  </tr>
+  <tr>
+    <td>🟢 入门</td>
+    <td>~25%</td>
+    <td>60%</td>
+    <td>35%</td>
+    <td>5%</td>
+    <td>0%</td>
+  </tr>
+  <tr>
+    <td>🔵 中等</td>
+    <td>~50%</td>
+    <td>40%</td>
+    <td>35%</td>
+    <td>15%</td>
+    <td>10%</td>
+  </tr>
+  <tr>
+    <td>🔴 困难</td>
+    <td>~25%</td>
+    <td>30%</td>
+    <td>30%</td>
+    <td>20%</td>
+    <td>20%</td>
+  </tr>
+</table>
 
 </div>
 
@@ -357,13 +516,38 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 操作 | Android | Web |
-|------|---------|-----|
-| 按钮点击 | 80ms 震动 + 1200Hz 正弦波 | `click.wav` |
-| 填入/删除数字 | 震动 + `Placement.mp3` | `Placement.mp3` |
-| 完成游戏 | 震动 + 上扬滑音 600→1200Hz | `success.wav` |
-| 错误满 3 次 | 震动 + `failed.mp3` | `failed.mp3` |
-| 撤销 / 重做 | 震动 + 按钮点击音 | `click.wav` |
+<table align="center" width="100%">
+  <tr>
+    <th>操作</th>
+    <th>Android</th>
+    <th>Web</th>
+  </tr>
+  <tr>
+    <td>按钮点击</td>
+    <td>80ms 震动 + 1200Hz 正弦波</td>
+    <td><code>click.wav</code></td>
+  </tr>
+  <tr>
+    <td>填入/删除数字</td>
+    <td>震动 + <code>Placement.mp3</code></td>
+    <td><code>Placement.mp3</code></td>
+  </tr>
+  <tr>
+    <td>完成游戏</td>
+    <td>震动 + 上扬滑音 600→1200Hz</td>
+    <td><code>success.wav</code></td>
+  </tr>
+  <tr>
+    <td>错误满 3 次</td>
+    <td>震动 + <code>failed.mp3</code></td>
+    <td><code>failed.mp3</code></td>
+  </tr>
+  <tr>
+    <td>撤销 / 重做</td>
+    <td>震动 + 按钮点击音</td>
+    <td><code>click.wav</code></td>
+  </tr>
+</table>
 
 </div>
 
@@ -381,12 +565,38 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 难度 | 提示数 | 出现概率 | 说明 |
-| --- | --- | --- | --- |
-| 🟥 极简 | 17-22 | ~10% | 需高级技巧 |
-| 🟧 困难 | 23-28 | ~25% | 适合有经验玩家 |
-| 🟦 中等 | 29-32 | ~40% | 常见数独水平 |
-| 🟩 简单 | 33-36 | ~25% | 新手入门 |
+<table align="center" width="100%">
+  <tr>
+    <th>难度</th>
+    <th>提示数</th>
+    <th>出现概率</th>
+    <th>说明</th>
+  </tr>
+  <tr>
+    <td>🟥 极简</td>
+    <td>17-22</td>
+    <td>~10%</td>
+    <td>需高级技巧</td>
+  </tr>
+  <tr>
+    <td>🟧 困难</td>
+    <td>23-28</td>
+    <td>~25%</td>
+    <td>适合有经验玩家</td>
+  </tr>
+  <tr>
+    <td>🟦 中等</td>
+    <td>29-32</td>
+    <td>~40%</td>
+    <td>常见数独水平</td>
+  </tr>
+  <tr>
+    <td>🟩 简单</td>
+    <td>33-36</td>
+    <td>~25%</td>
+    <td>新手入门</td>
+  </tr>
+</table>
 
 </div>
 
@@ -394,11 +604,28 @@ flutter build apk --release  # 发布版
 
 <div align="center">
 
-| 难度 | 提示数 | 出现概率 |
-| --- | --- | --- |
-| 🟧 困难 | 70-80 | ~25% |
-| 🟦 中等 | 92-105 | ~50% |
-| 🟩 简单 | 110-130 | ~25% |
+<table align="center" width="100%">
+  <tr>
+    <th>难度</th>
+    <th>提示数</th>
+    <th>出现概率</th>
+  </tr>
+  <tr>
+    <td>🟧 困难</td>
+    <td>70-80</td>
+    <td>~25%</td>
+  </tr>
+  <tr>
+    <td>🟦 中等</td>
+    <td>92-105</td>
+    <td>~50%</td>
+  </tr>
+  <tr>
+    <td>🟩 简单</td>
+    <td>110-130</td>
+    <td>~25%</td>
+  </tr>
+</table>
 
 </div>
 
