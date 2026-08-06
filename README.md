@@ -21,10 +21,10 @@
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="50%">
-    <col width="50%">
+    <col width="320">
+    <col width="320">
   </colgroup>
   <tr>
     <th>层级</th>
@@ -52,11 +52,11 @@
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="33%">
-    <col width="33%">
-    <col width="34%">
+    <col width="213">
+    <col width="213">
+    <col width="214">
   </colgroup>
   <tr>
     <th>工具</th>
@@ -110,20 +110,6 @@ flutter run -d <设备ID>
 - **USB 连接**：执行 `adb reverse tcp:8080 tcp:8080`，App 自动使用 `http://localhost:8080/api`
 - **同一 WiFi**：手机与电脑连同一热点，电脑运行 `ipconfig` 查看局域网 IP（如 `192.168.43.74`），App 设置 → 服务器地址 填写 `192.168.43.74:8080`（请求 8 秒超时，超时可重试）
 - **模拟器**：自动使用 `http://10.0.2.2:8080/api`
-
-### 一键脚本（run.ps1）
-
-PowerShell 运行 `run.ps1`，菜单：
-
-```
-  [1]  Install to Phone
-  [2]  Launch Web App (auto-start backend)
-  [3]  Start Backend Only
-  [4]  Stop Backend
-  [5]  Exit
-```
-
-> 后端已迁移到 Go（go-sudoku-backend），脚本中「后端」相关选项对应旧 Dart 后端，仅作历史保留；日常请使用上面的 Go 后端启动方式。
 
 ## 🗄 数据库
 
@@ -193,10 +179,10 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="50%">
-    <col width="50%">
+    <col width="320">
+    <col width="320">
   </colgroup>
   <tr>
     <th>表</th>
@@ -234,11 +220,11 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="33%">
-    <col width="33%">
-    <col width="34%">
+    <col width="213">
+    <col width="213">
+    <col width="214">
   </colgroup>
   <tr>
     <th>方法</th>
@@ -283,11 +269,11 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="33%">
-    <col width="33%">
-    <col width="34%">
+    <col width="213">
+    <col width="213">
+    <col width="214">
   </colgroup>
   <tr>
     <th>方法</th>
@@ -312,11 +298,11 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="33%">
-    <col width="33%">
-    <col width="34%">
+    <col width="213">
+    <col width="213">
+    <col width="214">
   </colgroup>
   <tr>
     <th>方法</th>
@@ -346,11 +332,11 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="33%">
-    <col width="33%">
-    <col width="34%">
+    <col width="213">
+    <col width="213">
+    <col width="214">
   </colgroup>
   <tr>
     <th>方法</th>
@@ -381,10 +367,10 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="50%">
-    <col width="50%">
+    <col width="320">
+    <col width="320">
   </colgroup>
   <tr>
     <th>模式</th>
@@ -410,10 +396,10 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="50%">
-    <col width="50%">
+    <col width="320">
+    <col width="320">
   </colgroup>
   <tr>
     <th>难度</th>
@@ -452,14 +438,14 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="16%">
-    <col width="16%">
-    <col width="16%">
-    <col width="16%">
-    <col width="16%">
-    <col width="20%">
+    <col width="106">
+    <col width="106">
+    <col width="106">
+    <col width="106">
+    <col width="106">
+    <col width="110">
   </colgroup>
   <tr>
     <th>难度</th>
@@ -503,11 +489,11 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="33%">
-    <col width="33%">
-    <col width="34%">
+    <col width="213">
+    <col width="213">
+    <col width="214">
   </colgroup>
   <tr>
     <th>操作</th>
@@ -549,12 +535,12 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="25%">
-    <col width="25%">
-    <col width="25%">
-    <col width="25%">
+    <col width="160">
+    <col width="160">
+    <col width="160">
+    <col width="160">
   </colgroup>
   <tr>
     <th>难度</th>
@@ -594,11 +580,11 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 <div align="center">
 
-<table align="center" width="100%">
+<table align="center" width="640">
   <colgroup>
-    <col width="33%">
-    <col width="33%">
-    <col width="34%">
+    <col width="213">
+    <col width="213">
+    <col width="214">
   </colgroup>
   <tr>
     <th>难度</th>
@@ -638,8 +624,7 @@ sudoku/
 ├── android/                       # Android 工程
 ├── ios/                           # iOS 工程
 ├── web/                           # Web 入口
-├── pubspec.yaml
-└── run.ps1                        # 一键启动脚本（手机 / Web）
+└── pubspec.yaml
 ```
 
 > 后端为独立仓库：[go-sudoku-backend](https://github.com/hihukayo/go-sudoku-backend.git)（Go + MySQL，完整接口文档见该仓库 README）。
