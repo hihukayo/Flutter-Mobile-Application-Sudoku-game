@@ -13,7 +13,7 @@ Flutter 数独移动应用，支持用户登录注册、经典/杀手数独、�
   - 笔记模式（候选数字标记）
   - 撤销 / 重做（支持笔记操作）
   - 错误计数（3×3 限 3 次，4×4 限 6 次）
-  - **云存档**：保存/读档游戏进度（手动 + 自动）
+  - **云存档**：保存/读档游戏进度（手动 + 自动），未游玩的新盘不会覆盖旧存档
   - 自动求解、重置
 - **积分系统**：每局游戏根据难度、用时、错误数计算积分
   - 公式：`基础分 × 难度系数 × 时间加成 × 错误惩罚`
@@ -21,15 +21,15 @@ Flutter 数独移动应用，支持用户登录注册、经典/杀手数独、�
 - **音效与震动**：按钮震动 + 原生音效（正弦波/MP3）
 - **自动收起键盘**：填满格子或游戏结束时自动隐藏
 - **按键防抖**：300ms 消抖，防止误触
-- **排行榜**：按总积分排名
-- **个人中心**：总局数/总积分/胜率、修改用户名/密码/手机号、注销账号、头像
+- **排行榜**：按总积分排名，显示胜率，用户名旁高亮「我」
+- **个人中心**：总局数/总积分/胜率、修改用户名/密码/手机号、注销账号、头像（服务器同步，换设备可恢复）
 
 ## 🛠 技术栈
 
 | 层级 | 技术 |
 | --- | --- |
 | 前端 | Flutter (Dart) |
-| 后端 | Dart shelf + shelf_router |
+| 后端 | Go（[go-sudoku-backend](https://github.com/hihukayo/go-sudoku-backend.git)） |
 | 数据库 | MySQL |
 | 音效 | Android AudioTrack / MediaPlayer / audioplayers (Web) |
 
@@ -44,6 +44,7 @@ Flutter 数独移动应用，支持用户登录注册、经典/杀手数独、�
 | Flutter | ^3.12 |
 | Dart SDK | ^3.12 |
 | MySQL | 8.0+ |
+| Go | 1.22+（编译 go-sudoku-backend 后端） |
 
 ### 一键启动
 
@@ -62,6 +63,7 @@ Flutter 数独移动应用，支持用户登录注册、经典/杀手数独、�
 - **选 `4`** → 停止后端
 
 > 如果遇到执行策略限制，先运行 `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`。
+> 注意：后端已迁移到 Go（go-sudoku-backend），`run.ps1` 中「启动后端」相关选项对应旧 Dart 后端，仅作历史保留。
 
 ### 手动启动
 
@@ -121,10 +123,11 @@ CREATE TABLE IF NOT EXISTS game_records (
 
 **后端：**
 ```bash
-cd server
-dart pub get
-dart run bin/server.dart
-# 输出：MySQL 连接成功 → http://localhost:8080
+git clone https://github.com/hihukayo/go-sudoku-backend.git
+cd go-sudoku-backend
+go build -o server.exe .
+.\server.exe
+# 输出：MySQL 连接成功 → 服务器已启动: http://localhost:8080
 ```
 
 **前端依赖：**
@@ -135,8 +138,8 @@ flutter pub get
 **Web 浏览器：**
 ```bash
 flutter build web --release
-cd server && dart run bin/server.dart
-# 打开 http://127.0.0.1:8080
+npx serve build/web
+# 打开 npx serve 提示的地址（默认 http://localhost:3000）
 ```
 
 **物理手机（Android）：**
@@ -161,6 +164,7 @@ flutter run -d <device_id>
 4. 安装：`flutter run -d <设备ID>`
 
 > 每次重新插拔手机需重新执行 `adb reverse`。
+> 同一 WiFi 方式：手机与电脑连同一热点，电脑运行 `ipconfig` 查看局域网 IP（如 `192.168.43.74`），App 设置 → 服务器地址 填写 `192.168.43.74:8080` 即可，无需 USB，也无需 `adb reverse`。
 
 ---
 
@@ -205,6 +209,11 @@ flutter build apk --release  # 发布版
 | POST | `/api/rank/submit` | 提交游戏结果（含积分） |
 | GET | `/api/rank/list` | 排行榜（总积分降序） |
 | GET | `/api/rank/user?username=xxx` | 个人统计 |
+### 头像
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| PUT | `/api/avatar` | 上传头像（base64，服务器持久化） |
+| GET | `/api/avatar?username=xxx` | 获取头像（base64） |
 
 ---
 
@@ -214,6 +223,7 @@ flutter build apk --release  # 发布版
 - **手动存档/读档**：游戏页面底部「存档」「读档」按钮
 - **续玩**：进入游戏时自动检测存档，弹窗询问是否继续
 - **云端存储**：存档保存在服务器 MySQL，换设备可恢复
+- **连接配置**：服务器地址可在设置中填写，请求 8 秒超时，超时后提示并可重试
 
 ## 🏆 积分系统
 
@@ -360,7 +370,7 @@ sudoku/
 │       ├── Placement.mp3            # 填入/删除数字
 │       └── failed.mp3               # 游戏失败
 ├── server/
-│   └── bin/server.dart              # 后端服务（shelf）
+│   └── bin/server.dart              # 旧 Dart 后端（已废弃，改用 go-sudoku-backend）
 ├── web/                             # Web 入口
 └── run.ps1                           # 一键启动器（手机/网页）
 ```

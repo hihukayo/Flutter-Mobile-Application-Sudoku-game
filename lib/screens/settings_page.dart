@@ -19,6 +19,37 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  String _serverAddress = '';
+  late final ScaffoldMessengerState _messenger = ScaffoldMessenger.of(context);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadServerAddress();
+  }
+
+  Future<void> _loadServerAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() => _serverAddress = prefs.getString('server_address') ?? '');
+  }
+
+  @override
+  void dispose() {
+    _messenger.clearSnackBars();
+    super.dispose();
+  }
+
+  void _showSnack(String msg) {
+    _messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,6 +83,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: () => _showEditDialog('手机号', widget.phone, (val, pwd) => ApiService.updatePhone(
                   username: widget.username, newPhone: val, password: pwd,
                 )),
+              ),
+              const SizedBox(height: 12),
+              _buildCard(
+                icon: Icons.cloud_off,
+                title: '服务器地址',
+                subtitle: _serverAddress.isEmpty ? '自动（USB/模拟器）' : _serverAddress,
+                onTap: _showServerAddressDialog,
               ),
               const SizedBox(height: 24),
               const Divider(),
@@ -93,6 +131,48 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<void> _showServerAddressDialog() async {
+    final controller = TextEditingController(text: _serverAddress);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('服务器地址', style: TextStyle(fontSize: 18)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '留空则使用默认（USB：localhost / 模拟器：10.0.2.2）',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: '例如 192.168.1.100:8080',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) {
+      await ApiService.setServerAddress(result);
+      setState(() => _serverAddress = result);
+      if (mounted) {
+        _showSnack(result.isEmpty ? '已恢复默认连接' : '服务器地址已保存');
+      }
+    }
+  }
+
   void _showEditDialog(String field, String current, Future<Map<String, dynamic>> Function(String value, String password) api) {
     final controller = TextEditingController();
     final pwdController = TextEditingController();
@@ -120,10 +200,15 @@ class _SettingsPageState extends State<SettingsPage> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
           ElevatedButton(
             onPressed: () async {
-              final res = await api(controller.text.trim(), pwdController.text);
+              final value = controller.text.trim();
+              if (value.isEmpty || pwdController.text.isEmpty) {
+                _showSnack('请输入新$field和当前密码');
+                return;
+              }
+              final res = await api(value, pwdController.text);
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? '操作完成')));
+              _showSnack(res['message'] ?? '操作完成');
             },
             child: const Text('确定'),
           ),
@@ -156,7 +241,11 @@ class _SettingsPageState extends State<SettingsPage> {
           ElevatedButton(
             onPressed: () async {
               if (newCtrl.text != confirmCtrl.text) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('两次密码不一致')));
+                _showSnack('两次密码不一致');
+                return;
+              }
+              if (oldCtrl.text.isEmpty || newCtrl.text.isEmpty) {
+                _showSnack('请填写完整');
                 return;
               }
               final res = await ApiService.updatePassword(
@@ -164,7 +253,7 @@ class _SettingsPageState extends State<SettingsPage> {
               );
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? '操作完成')));
+              _showSnack(res['message'] ?? '操作完成');
             },
             child: const Text('确定'),
           ),
@@ -202,7 +291,11 @@ class _SettingsPageState extends State<SettingsPage> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
               if (pwdCtrl.text != confirmPwdCtrl.text) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('两次密码不一致')));
+                _showSnack('两次密码不一致');
+                return;
+              }
+              if (phoneCtrl.text.trim().isEmpty || pwdCtrl.text.isEmpty) {
+                _showSnack('请填写手机号和密码');
                 return;
               }
               final res = await ApiService.deleteAccount(
@@ -211,14 +304,14 @@ class _SettingsPageState extends State<SettingsPage> {
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
               if (res['success']) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('账号已注销')));
+                _showSnack('账号已注销');
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.remove('login_username');
                 await prefs.remove('login_phone');
                 if (!context.mounted) return;
                 Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (_) => false);
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? '操作失败')));
+                _showSnack(res['message'] ?? '操作失败');
               }
             },
             child: const Text('确认注销'),

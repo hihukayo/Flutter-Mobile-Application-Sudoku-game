@@ -35,6 +35,7 @@ class ProfilePageState extends State<ProfilePage> {
 
   Future<void> refresh() async {
     setState(() => _statsLoading = true);
+    _syncAvatarFromServer(); // 切回“我的”时同步头像
     try {
       final res = await ApiService.getUserStats(username: widget.username);
       if (!mounted) return;
@@ -62,9 +63,31 @@ class ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  /// 从服务器同步头像（换机/换 App 后也能恢复）
+  Future<void> _syncAvatarFromServer() async {
+    try {
+      final res = await ApiService.getAvatar(username: widget.username);
+      if (!mounted || res['success'] != true) return;
+      final serverAvatar = res['avatar'] as String? ?? '';
+      if (serverAvatar.isNotEmpty) {
+        final bytes = base64Decode(serverAvatar);
+        setState(() => _avatarBytes = bytes);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('avatar_${widget.username}', serverAvatar);
+      }
+    } catch (_) {}
+  }
+
   Future<void> _saveAvatar(Uint8List bytes) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('avatar_${widget.username}', base64Encode(bytes));
+    // 上传服务器，实现跨设备/跨 App 同步
+    try {
+      await ApiService.uploadAvatar(
+        username: widget.username,
+        avatarBase64: base64Encode(bytes),
+      );
+    } catch (_) {}
   }
 
   Future<void> _pickImage() async {

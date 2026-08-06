@@ -62,10 +62,12 @@ class RankPageState extends State<RankPage> {
           color: const Color(0xFFF5F7FA),
           child: Row(
             children: [
-              const SizedBox(width: 36, child: Text('排名', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78909C)))),
+              const SizedBox(width: 4),
+              const SizedBox(width: 36, child: Center(child: Text('排名', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78909C))))),
+              const SizedBox(width: 4),
               const Expanded(child: Text('玩家', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78909C)))),
               SizedBox(width: 72, child: Text('积分', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF455A64)))),
-              const SizedBox(width: 48, child: Text('胜率', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78909C)))),
+              const SizedBox(width: 64, child: Text('胜率', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78909C)))),
             ],
           ),
         ),
@@ -205,15 +207,8 @@ class RankPageState extends State<RankPage> {
                     ),
                   ),
                   if (isMe) ...[
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0B4CFF),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: const Text('我', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600)),
-                    ),
+                    const SizedBox(width: 6),
+                    const Text('我', style: TextStyle(fontSize: 12, color: Color(0xFF0B4CFF), fontWeight: FontWeight.w600)),
                   ],
                 ],
               ),
@@ -227,10 +222,12 @@ class RankPageState extends State<RankPage> {
               ),
             ),
             SizedBox(
-              width: 48,
+              width: 64,
               child: Text(
                 '${winRate.toStringAsFixed(1)}%',
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,

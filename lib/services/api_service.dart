@@ -2,9 +2,30 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
+  static String _customAddress = '';
+
+  /// 启动时加载自定义服务器地址
+  static Future<void> loadServerAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    _customAddress = prefs.getString('server_address') ?? '';
+  }
+
+  /// 保存自定义服务器地址（留空恢复默认）
+  static Future<void> setServerAddress(String address) async {
+    final prefs = await SharedPreferences.getInstance();
+    _customAddress = address.trim();
+    await prefs.setString('server_address', _customAddress);
+  }
+
   static String get baseUrl {
+    final custom = _customAddress.trim();
+    if (custom.isNotEmpty) {
+      return 'http://$custom/api';
+    }
+
     if (kIsWeb) {
       return 'http://127.0.0.1:8080/api';
     }
@@ -21,17 +42,21 @@ class ApiService {
     return 'http://localhost:8080/api';
   }
 
+  /// 单次请求总超时（8 秒），避免一直等待
+  static Future<http.Response> _guard(Future<http.Response> future) =>
+      future.timeout(const Duration(seconds: 8));
+
   // ---- 注册 ----
   static Future<Map<String, dynamic>> register({
     required String username,
     required String phone,
     required String password,
   }) async {
-    final res = await http.post(
+    final res = await _guard(http.post(
       Uri.parse('$baseUrl/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'phone': phone, 'password': password}),
-    );
+    ));
     return jsonDecode(res.body);
   }
 
@@ -40,11 +65,11 @@ class ApiService {
     required String account,
     required String password,
   }) async {
-    final res = await http.post(
+    final res = await _guard(http.post(
       Uri.parse('$baseUrl/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'account': account, 'password': password}),
-    );
+    ));
     return jsonDecode(res.body);
   }
 
@@ -54,11 +79,11 @@ class ApiService {
     required String newUsername,
     required String password,
   }) async {
-    final res = await http.put(
+    final res = await _guard(http.put(
       Uri.parse('$baseUrl/user/update-username'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'newUsername': newUsername, 'password': password}),
-    );
+    ));
     return jsonDecode(res.body);
   }
 
@@ -68,11 +93,11 @@ class ApiService {
     required String oldPassword,
     required String newPassword,
   }) async {
-    final res = await http.put(
+    final res = await _guard(http.put(
       Uri.parse('$baseUrl/user/update-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'oldPassword': oldPassword, 'newPassword': newPassword}),
-    );
+    ));
     return jsonDecode(res.body);
   }
 
@@ -82,11 +107,11 @@ class ApiService {
     required String newPhone,
     required String password,
   }) async {
-    final res = await http.put(
+    final res = await _guard(http.put(
       Uri.parse('$baseUrl/user/update-phone'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'newPhone': newPhone, 'password': password}),
-    );
+    ));
     return jsonDecode(res.body);
   }
 
@@ -96,11 +121,11 @@ class ApiService {
     required String phone,
     required String password,
   }) async {
-    final res = await http.delete(
+    final res = await _guard(http.delete(
       Uri.parse('$baseUrl/user/delete'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'phone': phone, 'password': password}),
-    );
+    ));
     return jsonDecode(res.body);
   }
 
@@ -124,7 +149,7 @@ class ApiService {
     ).toList();
     final cagesJson = cages ?? [];
 
-    final res = await http.post(
+    final res = await _guard(http.post(
       Uri.parse('$baseUrl/save'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -140,7 +165,29 @@ class ApiService {
         'killerDifficulty': killerDifficulty,
         'cages': cagesJson,
       }),
-    );
+    ));
+    return jsonDecode(res.body);
+  }
+
+  // ---- 头像同步 ----
+  static Future<Map<String, dynamic>> getAvatar({
+    required String username,
+  }) async {
+    final res = await _guard(http.get(
+      Uri.parse('$baseUrl/avatar?username=${Uri.encodeComponent(username)}'),
+    ));
+    return jsonDecode(res.body);
+  }
+
+  static Future<Map<String, dynamic>> uploadAvatar({
+    required String username,
+    required String avatarBase64,
+  }) async {
+    final res = await _guard(http.put(
+      Uri.parse('$baseUrl/avatar'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'avatar': avatarBase64}),
+    ));
     return jsonDecode(res.body);
   }
 
@@ -148,9 +195,9 @@ class ApiService {
   static Future<Map<String, dynamic>> loadGame({
     required String username,
   }) async {
-    final res = await http.get(
+    final res = await _guard(http.get(
       Uri.parse('$baseUrl/load?username=${Uri.encodeComponent(username)}'),
-    );
+    ));
     return jsonDecode(res.body);
   }
 
@@ -162,7 +209,7 @@ class ApiService {
     int boardSize = 3,
     int score = 0,
   }) async {
-    final res = await http.post(
+    final res = await _guard(http.post(
       Uri.parse('$baseUrl/rank/submit'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -172,13 +219,13 @@ class ApiService {
         'boardSize': boardSize,
         'score': score,
       }),
-    );
+    ));
     return jsonDecode(res.body);
   }
 
   // ---- 获取排行榜（完成数 + 胜率） ----
   static Future<Map<String, dynamic>> getRankList() async {
-    final res = await http.get(Uri.parse('$baseUrl/rank/list'));
+    final res = await _guard(http.get(Uri.parse('$baseUrl/rank/list')));
     return jsonDecode(res.body);
   }
 
@@ -186,9 +233,9 @@ class ApiService {
   static Future<Map<String, dynamic>> getUserStats({
     required String username,
   }) async {
-    final res = await http.get(
+    final res = await _guard(http.get(
       Uri.parse('$baseUrl/rank/user?username=${Uri.encodeComponent(username)}'),
-    );
+    ));
     return jsonDecode(res.body);
   }
 }

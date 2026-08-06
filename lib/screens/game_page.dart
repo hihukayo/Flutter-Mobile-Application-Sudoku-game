@@ -74,6 +74,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   bool _isSolved = false;
   bool _hasGivenUp = false;
   bool _noteMode = false;
+  // 是否动过棋盘，防止未游玩的新盘覆盖旧存档
+  bool _dirty = false;
   bool _gameOver = false;
   int _errors = 0;
   int _boardSize = 3;
@@ -207,6 +209,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   /// 退出时自动保存（静默，不阻塞退出）
   void _autoSave() {
+    if (!_dirty) return;
     try {
       final cagesJson = _puzzle.cages?.map((c) => {
         'cellIndices': c.cellIndices,
@@ -325,6 +328,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _noteMode = false;
     _gameOver = false;
     _errors = 0;
+    _dirty = false;
     _paused = false;
     _statusMsg = '';
     _lastScore = 0;
@@ -348,7 +352,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _click();
     final becomingPaused = !_paused;
     setState(() => _paused = becomingPaused);
-    if (becomingPaused && !_gameOver && !_isSolved) {
+    if (becomingPaused && !_gameOver && !_isSolved && _dirty) {
       _saveGame(silent: true); // 暂停时自动存档
     }
   }
@@ -361,6 +365,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   void _onCellChanged(int r, int c, int oldVal, int newVal, Set<int> oldNotes) {
     if (_paused || _gameOver) return;
+    _dirty = true;
     _playPlacement();
     _undoStack.add(_UndoEntry(
       r: r, c: c,
@@ -404,6 +409,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   void _onNoteChanged(int r, int c, Set<int> oldNotes, Set<int> newNotes) {
     if (_paused || _gameOver) return;
+    _dirty = true;
     _undoStack.add(_UndoEntry(
       r: r, c: c,
       oldVal: 0, oldNotes: Set<int>.from(oldNotes),
@@ -416,6 +422,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   void _undo() {
     _click();
     if (_undoStack.isEmpty || _paused || _gameOver) return;
+    _dirty = true;
     final entry = _undoStack.removeLast();
     final currentVal = _puzzle.cells[entry.r][entry.c];
     final currentNotes = Set<int>.from(_puzzle.notes[entry.r][entry.c]);
@@ -434,6 +441,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   void _redo() {
     _click();
     if (_redoStack.isEmpty || _paused || _gameOver) return;
+    _dirty = true;
     final entry = _redoStack.removeLast();
     final currentVal = _puzzle.cells[entry.r][entry.c];
     final currentNotes = Set<int>.from(_puzzle.notes[entry.r][entry.c]);
@@ -741,6 +749,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _paused = false;
     _undoStack.clear();
     _redoStack.clear();
+    _dirty = false;
     _boardKey = GlobalKey();
 
     _startTimer();
