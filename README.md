@@ -1,6 +1,6 @@
 # 🧩 数独 Sudoku
 
-> Flutter 数独移动应用：登录注册、经典 / 杀手数独、云存档、头像、积分排行榜。前端使用 Flutter，后端使用 Go（[go-sudoku-backend](https://github.com/hihukayo/go-sudoku-backend.git)）+ MySQL。
+> Flutter 数独移动应用：登录注册、经典 / 算数数独、云存档、头像、积分排行榜。前端使用 Flutter，后端使用 Go（[go-sudoku-backend](https://github.com/hihukayo/go-sudoku-backend.git)）+ MySQL。
 
 ## ✨ 功能特性
 
@@ -8,7 +8,7 @@
 - **个人头像**：相册选图，服务器持久化存储，换设备可恢复
 - **数独游戏**
   - 3×3 经典九宫格 & 4×4 十六进制数独
-  - 杀手数独（3×3）：虚线笼（Cage）+ 和值模式，支持异形笼子
+  - 算数数独（3×3）：笼子（Cage）+ 运算符（+ - × ÷），支持异形笼子
   - 难度随机（正态分布），避免连续重复
   - 计时器、暂停 / 继续（暂停自动存档）、笔记模式、撤销 / 重做
   - 错误计数（3×3 限 3 次，4×4 限 6 次），错误次数不受撤销 / 重做影响
@@ -355,7 +355,7 @@ CREATE TABLE IF NOT EXISTS avatars (
     <td width="320" align="center">100</td>
   </tr>
   <tr>
-    <td width="320" align="center">9×9 杀手</td>
+    <td width="320" align="center">9×9 算数</td>
     <td width="320" align="center">200</td>
   </tr>
   <tr>
@@ -395,14 +395,15 @@ CREATE TABLE IF NOT EXISTS avatars (
 
 **错误惩罚**：`(最大允许错误 - 实际错误) / 最大允许错误`，3×3 最大 3 次，4×4 最大 6 次
 
-## 🎯 杀手数独
+## 🎯 算数数独
 
-在标准数独规则上增加虚线框（Cage）与和值约束：
+在标准数独规则上增加笼子（Cage）与运算符约束：
 
 1. 每行、每列、每宫数字 1-9 不重复
-2. 每个虚线框内数字之和等于右下角和值
-3. 试错机制：不逐格对照答案，允许试错
-4. 错误满 3 次游戏结束
+2. 每个笼子内数字按运算符计算结果等于右下角标签：`+` 求和、`-` 求差、`×` 求积、`÷` 求商
+3. 2 格笼以除法为主（65%），3/4 格笼以加法为主（90%，乘积不超过 50），不生成 5 格笼
+4. 试错机制：不逐格对照答案，允许试错
+5. 错误满 3 次游戏结束
 
 难度分布（正态随机）：
 
@@ -430,16 +431,16 @@ CREATE TABLE IF NOT EXISTS avatars (
     <td width="106" align="center">~50%</td>
     <td width="106" align="center">40%</td>
     <td width="106" align="center">35%</td>
-    <td width="106" align="center">15%</td>
-    <td width="110" align="center">10%</td>
+    <td width="106" align="center">25%</td>
+    <td width="110" align="center">0%</td>
   </tr>
   <tr>
     <td width="106" align="center">🔴 困难</td>
     <td width="106" align="center">~25%</td>
     <td width="106" align="center">30%</td>
     <td width="106" align="center">30%</td>
-    <td width="106" align="center">20%</td>
-    <td width="110" align="center">20%</td>
+    <td width="106" align="center">40%</td>
+    <td width="110" align="center">0%</td>
   </tr>
 </table>
 
@@ -564,7 +565,7 @@ sudoku/
 │   ├── main.dart                  # 入口 + 启动画面
 │   ├── models/                    # 数据模型、生成器、求解器
 │   ├── screens/                   # 登录、注册、首页、游戏、排行榜、个人中心、设置
-│   ├── widgets/sudoku_board.dart  # 棋盘组件（含杀手笼绘制）
+│   ├── widgets/sudoku_board.dart  # 棋盘组件（含算数笼绘制）
 │   └── services/api_service.dart  # API 请求封装（可配置服务器地址 + 8 秒超时）
 ├── assets/audio/                  # 音效资源
 ├── android/                       # Android 工程

@@ -132,7 +132,7 @@ class SudokuBoardState extends State<SudokuBoard> {
     );
   }
 
-  Widget _buildRegularGrid(TextStyle textStyle, double fontSize, double noteSize) {
+  Widget _buildRegularGrid(TextStyle textStyle, double fontSize, double noteSize, {bool uniformThin = false}) {
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _gs * _gs,
@@ -179,12 +179,12 @@ class SudokuBoardState extends State<SudokuBoard> {
                    : Colors.white,
               border: Border(
                 right: BorderSide(
-                  color: (c + 1) % _bs == 0 ? const Color(0xFF455A64) : Colors.grey[300]!,
-                  width: (c + 1) % _bs == 0 ? 2 : 0.5,
+                  color: (!uniformThin && (c + 1) % _bs == 0) ? const Color(0xFF455A64) : Colors.grey[300]!,
+                  width: (!uniformThin && (c + 1) % _bs == 0) ? 2 : 0.5,
                 ),
                 bottom: BorderSide(
-                  color: (r + 1) % _bs == 0 ? const Color(0xFF455A64) : Colors.grey[300]!,
-                  width: (r + 1) % _bs == 0 ? 2 : 0.5,
+                  color: (!uniformThin && (r + 1) % _bs == 0) ? const Color(0xFF455A64) : Colors.grey[300]!,
+                  width: (!uniformThin && (r + 1) % _bs == 0) ? 2 : 0.5,
                 ),
               ),
             ),
@@ -209,8 +209,8 @@ class SudokuBoardState extends State<SudokuBoard> {
   Widget _buildKillerGrid(TextStyle textStyle, double fontSize, double noteSize, bool isKiller) {
     return Stack(
       children: [
-        _buildRegularGrid(textStyle, fontSize, noteSize),
-        // 笼子虚线框 + 和值标签（IgnorePointer 确保不拦截点击）
+        _buildRegularGrid(textStyle, fontSize, noteSize, uniformThin: true),
+        // 笼子边框 + 标签（IgnorePointer 确保不拦截点击）
         Positioned.fill(
           child: IgnorePointer(
             child: CustomPaint(
@@ -245,7 +245,7 @@ class SudokuBoardState extends State<SudokuBoard> {
   }
 }
 
-// ---- 杀手数独笼子边界 + 和值标签绘制器 ----
+// ---- 算数数独笼子边界 + 标签绘制器 ----
 class _CagePainter extends CustomPainter {
   final SudokuPuzzle puzzle;
   final Set<int> invalidCages;
@@ -256,7 +256,6 @@ class _CagePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final gs = puzzle.gridSize;
     final cellSize = size.width / gs;
-    const inset = 2.5;
 
     if (puzzle.cages == null) return;
     // 每格 → 笼子索引
@@ -267,12 +266,13 @@ class _CagePainter extends CustomPainter {
       }
     }
 
-    // 逐笼绘制边界（红 = 和值超限，灰 = 正常）
+    // 逐笼绘制边界（红 = 约束被违反，深色 = 正常，与安卓端一致沿格线绘制）
     for (int ci = 0; ci < puzzle.cages!.length; ci++) {
+      final isBad = invalidCages.contains(ci);
       final paint = Paint()
-        ..color = invalidCages.contains(ci) ? const Color(0xFFE53935) : const Color(0xFFB0BEC5)
+        ..color = isBad ? const Color(0xFFE53935) : const Color(0xFF455A64)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = invalidCages.contains(ci) ? 1.2 : 0.8;
+        ..strokeWidth = isBad ? 1.2 : 2.0;
 
       final cells = puzzle.cages![ci].cellIndices.toSet();
       for (final idx in cells) {
@@ -280,35 +280,21 @@ class _CagePainter extends CustomPainter {
         final x = c * cellSize, y = r * cellSize;
 
         if (r > 0 && !cells.contains((r - 1) * gs + c)) {
-          canvas.drawLine(Offset(x, y + inset), Offset(x + cellSize, y + inset), paint);
+          canvas.drawLine(Offset(x, y), Offset(x + cellSize, y), paint);
         }
         if (r < gs - 1 && !cells.contains((r + 1) * gs + c)) {
-          canvas.drawLine(Offset(x, y + cellSize - inset), Offset(x + cellSize, y + cellSize - inset), paint);
+          canvas.drawLine(Offset(x, y + cellSize), Offset(x + cellSize, y + cellSize), paint);
         }
         if (c > 0 && !cells.contains(r * gs + (c - 1))) {
-          canvas.drawLine(Offset(x + inset, y), Offset(x + inset, y + cellSize), paint);
+          canvas.drawLine(Offset(x, y), Offset(x, y + cellSize), paint);
         }
         if (c < gs - 1 && !cells.contains(r * gs + (c + 1))) {
-          canvas.drawLine(Offset(x + cellSize - inset, y), Offset(x + cellSize - inset, y + cellSize), paint);
-        }
-
-        // 转角斜线
-        if ((r == 0 || !cells.contains((r - 1) * gs + c)) && (c == 0 || !cells.contains(r * gs + (c - 1)))) {
-          canvas.drawLine(Offset(x + inset, y), Offset(x, y + inset), paint);
-        }
-        if ((r == 0 || !cells.contains((r - 1) * gs + c)) && (c == gs - 1 || !cells.contains(r * gs + (c + 1)))) {
-          canvas.drawLine(Offset(x + cellSize, y + inset), Offset(x + cellSize - inset, y), paint);
-        }
-        if ((r == gs - 1 || !cells.contains((r + 1) * gs + c)) && (c == 0 || !cells.contains(r * gs + (c - 1)))) {
-          canvas.drawLine(Offset(x, y + cellSize - inset), Offset(x + inset, y + cellSize), paint);
-        }
-        if ((r == gs - 1 || !cells.contains((r + 1) * gs + c)) && (c == gs - 1 || !cells.contains(r * gs + (c + 1)))) {
-          canvas.drawLine(Offset(x + cellSize - inset, y + cellSize), Offset(x + cellSize, y + cellSize - inset), paint);
+          canvas.drawLine(Offset(x + cellSize, y), Offset(x + cellSize, y + cellSize), paint);
         }
       }
     }
 
-    // 和值标签
+    // 笼子标签：每个笼子显示 运算符+结果（如 +10、-2、×100、÷3）
     for (final cage in puzzle.cages!) {
       int botR = -1, botC = -1;
       for (final idx in cage.cellIndices) {
@@ -317,14 +303,15 @@ class _CagePainter extends CustomPainter {
       }
       final tp = TextPainter(
         text: TextSpan(
-          text: '${cage.sum}',
+          text: cage.labelText,
           style: const TextStyle(
             color: Color(0xFF455A64), fontSize: 8, fontWeight: FontWeight.w700,
           ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(botC * cellSize + cellSize - 2 - tp.width, botR * cellSize + cellSize - 10));
+      // 统一右内缩，避免与棋盘右边框重叠（与安卓端一致）
+      tp.paint(canvas, Offset(botC * cellSize + cellSize - 2 - tp.width, botR * cellSize + cellSize - 9));
     }
   }
 

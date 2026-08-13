@@ -30,14 +30,14 @@ class SudokuGenerator {
   List<int> _cageProbs(String difficulty) {
     switch (difficulty) {
       case '入门': return [60, 35, 5, 0];  // 无5格，4格极少
-      case '困难': return [30, 30, 20, 20];
-      default: return [40, 35, 15, 10]; // 中等
+      case '困难': return [30, 30, 40, 0];
+      default: return [40, 35, 25, 0]; // 中等
     }
   }
 
-  /// 生成杀手数独
+  /// 生成算数数独
   SudokuPuzzle generateKiller({String difficulty = '中等'}) {
-    assert(boardSize == 3, '杀手数独仅支持 3×3');
+    assert(boardSize == 3, '算数数独仅支持 3×3');
     const maxAttempts = 50;
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
       final puzzle = SudokuPuzzle(boardSize: boardSize);
@@ -45,7 +45,7 @@ class SudokuGenerator {
 
       if (_generateCages(puzzle, difficulty)) {
         puzzle.killerDifficulty = difficulty;
-        // 清空所有格子（杀手数独不给任何数字）
+        // 清空所有格子（算数数独不给任何数字）
         for (int r = 0; r < gridSize; r++) {
           for (int c = 0; c < gridSize; c++) {
             puzzle.cells[r][c] = 0;
@@ -81,20 +81,28 @@ class SudokuGenerator {
         assigned[i] = cages.length;
         bool ok = true;
 
-        // 从笼子任意边界扩展（支持 L 型等异形）
+        // 从笼子任意边界扩展（加权随机：与笼子相邻边多的格子优先，形成俄罗斯方块式异形）
         while (cage.length < size) {
-          final candidates = <int>{};
+          final scores = <int, int>{};
           for (final idx in cage) {
             final r = idx ~/ gs, c = idx % gs;
             for (final d in dirs) {
               final nr = r + d.$1, nc = c + d.$2;
               if (nr < 0 || nr >= gs || nc < 0 || nc >= gs) continue;
               final nIdx = nr * gs + nc;
-              if (assigned[nIdx] == -1) candidates.add(nIdx);
+              if (assigned[nIdx] == -1) scores[nIdx] = (scores[nIdx] ?? 0) + 1;
             }
           }
-          if (candidates.isEmpty) { ok = false; break; }
-          final chosen = candidates.elementAt(_rng.nextInt(candidates.length));
+          if (scores.isEmpty) { ok = false; break; }
+          final entries = scores.entries.toList();
+          final weights = entries.map((e) => e.value * e.value).toList();
+          var total = weights.fold(0, (a, b) => a + b);
+          var roll = _rng.nextInt(total);
+          var chosen = entries.last.key;
+          for (int i = 0; i < entries.length; i++) {
+            roll -= weights[i];
+            if (roll < 0) { chosen = entries[i].key; break; }
+          }
           cage.add(chosen);
           assigned[chosen] = cages.length;
         }
@@ -105,18 +113,44 @@ class SudokuGenerator {
 
       // 检查全部格已分配
       if (assigned.every((a) => a != -1)) {
-        // 计算和值写入 puzzle
+        // 为每个笼子挑选算数运算符并写入 puzzle
         puzzle.cages = cages.map((c) {
-          int sum = 0;
-          for (final idx in c) {
-            sum += puzzle.solution[idx ~/ gs][idx % gs];
-          }
-          return Cage(cellIndices: List.from(c), sum: sum);
+          final values =
+              c.map((idx) => puzzle.solution[idx ~/ gs][idx % gs]).toList();
+          final chosen = _pickCageOp(c, values);
+          return Cage(cellIndices: List.from(c), sum: chosen.$2, op: chosen.$1);
         }).toList();
         return true;
       }
     }
     return false;
+  }
+
+  /// 为笼子挑选算数运算符：2 格支持 + - × ÷，3/4 格只支持 + 或乘积较小的 ×
+  (String, int) _pickCageOp(List<int> cage, List<int> values) {
+    final sum = values.fold(0, (a, b) => a + b);
+    final options = <(String, int, int)>[]; // (运算符, 目标值, 权重)
+    if (cage.length == 2) {
+      final a = values[0] > values[1] ? values[0] : values[1];
+      final b = values[0] < values[1] ? values[0] : values[1];
+      final diff = a - b;
+      final quotient = (b > 0 && a % b == 0) ? a ~/ b : -1;
+      options.add(('+', sum, 25));
+      if (quotient >= 2 && quotient <= 9) options.add(('÷', quotient, 65));
+      if (diff >= 2) options.add(('-', diff, 10));
+      options.add(('×', a * b, 10));
+    } else {
+      final product = values.fold(1, (a, b) => a * b);
+      options.add(('+', sum, 90));
+      if (product <= 50) options.add(('×', product, 10));
+    }
+    final total = options.fold(0, (acc, o) => acc + o.$3);
+    var roll = _rng.nextInt(total);
+    for (final o in options) {
+      roll -= o.$3;
+      if (roll < 0) return (o.$1, o.$2);
+    }
+    return ('+', sum);
   }
 
   /// 根据概率选取笼子大小，-1 表示剩余格子无法组成有效笼子
@@ -131,22 +165,20 @@ class SudokuGenerator {
     for (int attempt = 0; attempt < 20; attempt++) {
       final roll = _rng.nextInt(100);
       int cum = 0;
-      for (int sz = 2; sz <= 5; sz++) {
+      for (int sz = 2; sz <= 4; sz++) {
         cum += probs[sz - 2];
         if (roll < cum) {
           if (remaining < sz) break;
           if (sz == 4 && count4 >= max4) continue;
-          if (sz == 5 && difficulty == '入门') continue;
           final rest = remaining - sz;
           if (rest == 0 || rest >= 2) return sz;
         }
       }
     }
     // fallback: 取能放下的最大尺寸
-    for (final sz in [5, 4, 3, 2]) {
+    for (final sz in [4, 3, 2]) {
       if (remaining >= sz) {
         if (sz == 4 && count4 >= max4) continue;
-        if (sz == 5 && difficulty == '入门') continue;
         final rest = remaining - sz;
         if (rest == 0 || rest >= 2) return sz;
       }
@@ -375,4 +407,13 @@ class SudokuGenerator {
     solve(grid);
     return count;
   }
+}
+
+/// 供 compute 后台 isolate 生成谜题使用（参数与返回值均为可发送数据）
+SudokuPuzzle generatePuzzleInIsolate(Map<String, Object> params) {
+  final gen = SudokuGenerator(boardSize: params['boardSize'] as int);
+  if (params['killer'] == true) {
+    return gen.generateKiller(difficulty: params['difficulty'] as String);
+  }
+  return gen.generate(clues: params['clues'] as int);
 }

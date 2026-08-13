@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' show Random;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show compute, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // import 'package:google_fonts/google_fonts.dart';
@@ -246,7 +246,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     if (!_dirty) return;
     try {
       final cagesJson = _puzzle.cages
-          ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum})
+          ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum, 'op': c.op})
           .toList();
       ApiService.saveGame(
         username: widget.username,
@@ -342,7 +342,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     return clues;
   }
 
-  void _newGame({bool silent = false}) {
+  Future<void> _newGame({bool silent = false}) async {
     if (_generating) return; // 生成中禁止重复点击
     if (silent) {
       _tap();
@@ -352,6 +352,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       _click();
     }
     _generating = true;
+    if (mounted) setState(() {});
+    // 后台 isolate 生成，避免卡 UI；期间“新局”按钮禁用，连点直接忽略
     if (_isKiller) {
       // 杀手难度正态分布：入门25%、中等50%、困难25%
       final diffRoll = _rng.nextInt(100);
@@ -360,16 +362,27 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           : diffRoll < 75
           ? '中等'
           : '困难';
-      _puzzle = SudokuGenerator(
-        boardSize: 3,
-      ).generateKiller(difficulty: _killerDifficulty);
+      _puzzle = await compute(
+        generatePuzzleInIsolate,
+        <String, Object>{
+          'boardSize': 3,
+          'killer': true,
+          'difficulty': _killerDifficulty,
+        },
+      );
     } else {
       _pickClueCount();
-      _puzzle = SudokuGenerator(
-        boardSize: _boardSize,
-      ).generate(clues: _clueCount);
+      _puzzle = await compute(
+        generatePuzzleInIsolate,
+        <String, Object>{
+          'boardSize': _boardSize,
+          'killer': false,
+          'clues': _clueCount,
+        },
+      );
     }
     _generating = false;
+    if (!mounted) return;
     _isSolved = false;
     _hasGivenUp = false;
     _noteMode = false;
@@ -696,7 +709,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   Future<void> _saveGame({bool silent = false}) async {
     try {
       final cagesJson = _puzzle.cages
-          ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum})
+          ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum, 'op': c.op})
           .toList();
 
       await ApiService.saveGame(
@@ -852,13 +865,14 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       }
     }
 
-    // 恢复笼子（杀手数独）
+    // 恢复笼子（算数数独）
     if (isKiller && cagesRaw.isNotEmpty) {
       _puzzle.cages = cagesRaw.map((c) {
         final cMap = c as Map<String, dynamic>;
         return Cage(
           cellIndices: (cMap['cellIndices'] as List).cast<int>(),
           sum: cMap['sum'] as int? ?? 0,
+          op: cMap['op'] as String? ?? '+',
         );
       }).toList();
     }
@@ -970,7 +984,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     try {
       String mode;
       if (_isKiller) {
-        mode = '杀手$_killerDifficulty';
+        mode = '算数$_killerDifficulty';
       } else if (_boardSize == 4) {
         mode = '4×4$_difficulty';
       } else {
@@ -1032,7 +1046,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('3×3 杀手', style: TextStyle(fontSize: 13)),
+              const Text('3×3 算数', style: TextStyle(fontSize: 13)),
               const SizedBox(width: 18),
               if (isKillerSelected)
                 const Icon(Icons.check, size: 14, color: _blue),
@@ -1381,7 +1395,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _textBtn('新局', _newGame, s),
+                    _textBtn('新局', _generating ? null : _newGame, s),
                     _textBtn(
                       '完成',
                       (disabled || _isSolved || _hasGivenUp)
