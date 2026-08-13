@@ -1530,14 +1530,14 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                       const SizedBox(width: 4),
                     ],
                     SizedBox(
-                      width: 18,
-                      height: 18,
+                      width: 20,
+                      height: 20,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          Icon(icon, size: 18, color: color),
+                          Icon(icon, size: 20, color: color),
                           if (overlayIcon != null)
-                            Icon(overlayIcon, size: 9, color: color),
+                            Icon(overlayIcon, size: 7, color: color),
                         ],
                       ),
                     ),
