@@ -1403,7 +1403,12 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _textBtn('新局', _generating ? null : _newGame, s),
+                    _textBtn(
+                      '新局',
+                      _generating ? null : _newGame,
+                      s,
+                      icon: Icons.refresh,
+                    ),
                     _textBtn(
                       '完成',
                       (disabled || _isSolved || _hasGivenUp)
@@ -1411,6 +1416,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                           : _checkCompletion,
                       s,
                       fill: true,
+                      icon: Icons.star_border,
+                      overlayIcon: Icons.check,
                     ),
                     _textBtn(
                       '求解',
@@ -1418,6 +1425,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                           ? null
                           : _autoSolve,
                       s,
+                      icon: Icons.lightbulb_outline,
+                      iconAtEnd: true,
                     ),
                   ],
                 ),
@@ -1437,6 +1446,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                       '重做',
                       disabled ? null : (_redoStack.isEmpty ? null : _redo),
                       s,
+                      iconAtEnd: true,
                     ),
                   ],
                 ),
@@ -1477,8 +1487,21 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     VoidCallback? onTap,
     TextStyle s, {
     bool fill = false,
+    IconData? icon,
+    IconData? overlayIcon,
+    bool iconAtEnd = false,
   }) {
     final isDisabled = onTap == null;
+    final color = isDisabled
+        ? Colors.grey[350]!
+        : fill
+        ? Colors.white
+        : const Color(0xFF455A64);
+    final textStyle = s.copyWith(
+      fontSize: 15,
+      fontWeight: fill ? FontWeight.w600 : FontWeight.w500,
+      color: color,
+    );
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1496,18 +1519,34 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Text(
-            label,
-            style: s.copyWith(
-              fontSize: 15,
-              fontWeight: fill ? FontWeight.w600 : FontWeight.w500,
-              color: isDisabled
-                  ? Colors.grey[350]!
-                  : fill
-                  ? Colors.white
-                  : const Color(0xFF455A64),
-            ),
-          ),
+          // 图标+文字整体居中，间距 4（与下排撤销/重置/重做一致）
+          child: icon == null
+              ? Text(label, style: textStyle)
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (iconAtEnd) ...[
+                      Text(label, style: textStyle),
+                      const SizedBox(width: 4),
+                    ],
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(icon, size: 18, color: color),
+                          if (overlayIcon != null)
+                            Icon(overlayIcon, size: 9, color: color),
+                        ],
+                      ),
+                    ),
+                    if (!iconAtEnd) ...[
+                      const SizedBox(width: 4),
+                      Text(label, style: textStyle),
+                    ],
+                  ],
+                ),
         ),
       ),
     );
@@ -1517,8 +1556,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     IconData icon,
     String label,
     VoidCallback? onTap,
-    TextStyle s,
-  ) {
+    TextStyle s, {
+    bool iconAtEnd = false,
+  }) {
     final isDisabled = onTap == null;
     final color = isDisabled ? Colors.grey[350]! : const Color(0xFF455A64);
     return Material(
@@ -1530,12 +1570,19 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           width: 88,
           height: 44,
           alignment: Alignment.center,
+          // 图标+文字整体居中，间距 4（撤销/重置/重做/存档/读档统一）
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              if (iconAtEnd) ...[
+                Text(label, style: s.copyWith(fontSize: 15, color: color)),
+                const SizedBox(width: 4),
+              ],
               Icon(icon, size: 18, color: color),
-              const SizedBox(width: 4),
-              Text(label, style: s.copyWith(fontSize: 13, color: color)),
+              if (!iconAtEnd) ...[
+                const SizedBox(width: 4),
+                Text(label, style: s.copyWith(fontSize: 15, color: color)),
+              ],
             ],
           ),
         ),
