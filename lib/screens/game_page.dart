@@ -663,7 +663,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     } else {
       setState(() => _statusMsg = '还有空格未填，请再检查一下吧');
       _statusTimer?.cancel();
-      _statusTimer = Timer(const Duration(seconds: 2), () {
+      _statusTimer = Timer(const Duration(seconds: 4), () {
         if (mounted) setState(() => _statusMsg = '');
       });
     }
@@ -757,6 +757,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       final res = await ApiService.loadGame(username: widget.username);
       if (!mounted) return;
       if (res['success'] != true) {
+        _showStatus('读档失败');
         return;
       }
       final savedAt = res['savedAt'] ?? '';
@@ -844,6 +845,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       if (go != true || !mounted) return;
 
       _restoreFromData(res);
+      _showStatus('读档成功');
     } catch (_) {
       if (mounted) _showStatus('加载失败');
     }
@@ -1130,11 +1132,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     );
   }
 
-  /// 在状态栏显示消息（棋盘上方），2秒后自动清除
+  /// 在状态栏显示消息（棋盘上方），4秒后自动清除
   void _showStatus(String msg) {
     setState(() => _statusMsg = msg);
     _statusTimer?.cancel();
-    _statusTimer = Timer(const Duration(seconds: 2), () {
+    _statusTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) setState(() => _statusMsg = '');
     });
   }

@@ -45,9 +45,9 @@ class ApiService {
     return 'http://localhost:8080/api';
   }
 
-  /// 单次请求总超时（8 秒），避免一直等待
+  /// 单次请求总超时（4 秒），避免一直等待
   static Future<http.Response> _guard(Future<http.Response> future) =>
-      future.timeout(const Duration(seconds: 8));
+      future.timeout(const Duration(seconds: 4));
 
   // ---- 注册 ----
   static Future<Map<String, dynamic>> register({

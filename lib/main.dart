@@ -37,6 +37,12 @@ class _MyAppState extends State<MyApp> {
               seedColor: const Color(0xFF455A64),
             ),
             scaffoldBackgroundColor: lightAppColors.background,
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: lightAppColors.primary,
+                foregroundColor: lightAppColors.onPrimary,
+              ),
+            ),
             extensions: const [lightAppColors],
           ),
           darkTheme: ThemeData(
@@ -46,6 +52,12 @@ class _MyAppState extends State<MyApp> {
               brightness: Brightness.dark,
             ),
             scaffoldBackgroundColor: darkAppColors.background,
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: darkAppColors.primary,
+                foregroundColor: darkAppColors.onPrimary,
+              ),
+            ),
             extensions: const [darkAppColors],
           ),
           themeMode: themeMode,
