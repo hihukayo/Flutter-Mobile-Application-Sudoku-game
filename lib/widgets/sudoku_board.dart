@@ -91,10 +91,15 @@ class SudokuBoardState extends State<SudokuBoard> {
       setState(() {
         widget.puzzle.cells[r][c] = n;
         widget.puzzle.notes[r][c].clear();
-        _errors.remove('$r,$c');
         if (widget.puzzle.isKiller) {
-          if (widget.puzzle.isConflictAt(r, c, n)) _errors.add('$r,$c');
+          if (widget.puzzle.isConflictAt(r, c, n)) {
+            // 违反笼子约束：整个笼子的格子一起标红
+            _errors = widget.puzzle.conflictCells();
+          } else {
+            _errors.remove('$r,$c');
+          }
         } else {
+          _errors.remove('$r,$c');
           if (n != widget.puzzle.solution[r][c]) _errors.add('$r,$c');
         }
       });
@@ -266,35 +271,46 @@ class _CagePainter extends CustomPainter {
       }
     }
 
-    // 逐笼绘制边界（红 = 约束被违反，深色 = 正常，与安卓端一致沿格线绘制）
-    for (int ci = 0; ci < puzzle.cages!.length; ci++) {
-      final isBad = invalidCages.contains(ci);
-      final paint = Paint()
-        ..color = isBad ? const Color(0xFFE53935) : const Color(0xFF455A64)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = isBad ? 1.2 : 2.0;
+    // 先画正常笼子，再画错误笼子（红色最后绘制，确保整圈边框完整变红，不被相邻笼子覆盖）
+    for (final isBad in [false, true]) {
+      for (int ci = 0; ci < puzzle.cages!.length; ci++) {
+        if (invalidCages.contains(ci) != isBad) continue;
+        final paint = Paint()
+          ..color = isBad ? const Color(0xFFE53935) : const Color(0xFF455A64)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0;
 
-      final cells = puzzle.cages![ci].cellIndices.toSet();
-      for (final idx in cells) {
-        final r = idx ~/ gs, c = idx % gs;
-        final x = c * cellSize, y = r * cellSize;
+        final cells = puzzle.cages![ci].cellIndices.toSet();
+        for (final idx in cells) {
+          final r = idx ~/ gs, c = idx % gs;
+          final x = c * cellSize, y = r * cellSize;
 
-        if (r > 0 && !cells.contains((r - 1) * gs + c)) {
-          canvas.drawLine(Offset(x, y), Offset(x + cellSize, y), paint);
-        }
-        if (r < gs - 1 && !cells.contains((r + 1) * gs + c)) {
-          canvas.drawLine(Offset(x, y + cellSize), Offset(x + cellSize, y + cellSize), paint);
-        }
-        if (c > 0 && !cells.contains(r * gs + (c - 1))) {
-          canvas.drawLine(Offset(x, y), Offset(x, y + cellSize), paint);
-        }
-        if (c < gs - 1 && !cells.contains(r * gs + (c + 1))) {
-          canvas.drawLine(Offset(x + cellSize, y), Offset(x + cellSize, y + cellSize), paint);
+          if (r > 0 && !cells.contains((r - 1) * gs + c)) {
+            canvas.drawLine(Offset(x, y), Offset(x + cellSize, y), paint);
+          }
+          if (r < gs - 1 && !cells.contains((r + 1) * gs + c)) {
+            canvas.drawLine(Offset(x, y + cellSize), Offset(x + cellSize, y + cellSize), paint);
+          }
+          if (c > 0 && !cells.contains(r * gs + (c - 1))) {
+            canvas.drawLine(Offset(x, y), Offset(x, y + cellSize), paint);
+          }
+          if (c < gs - 1 && !cells.contains(r * gs + (c + 1))) {
+            canvas.drawLine(Offset(x + cellSize, y), Offset(x + cellSize, y + cellSize), paint);
+          }
+          // 错误笼子贴棋盘外圈：外圈边框对应线段也标红
+          if (isBad) {
+            if (r == 0) canvas.drawLine(Offset(x, y), Offset(x + cellSize, y), paint);
+            if (r == gs - 1) {
+              canvas.drawLine(Offset(x, y + cellSize), Offset(x + cellSize, y + cellSize), paint);
+            }
+            if (c == 0) canvas.drawLine(Offset(x, y), Offset(x, y + cellSize), paint);
+            if (c == gs - 1) {
+              canvas.drawLine(Offset(x + cellSize, y), Offset(x + cellSize, y + cellSize), paint);
+            }
+          }
         }
       }
-    }
-
-    // 笼子标签：每个笼子显示 运算符+结果（如 +10、-2、×100、÷3）
+    }    // 笼子标签：每个笼子显示 运算符+结果（如 +10、-2、×100、÷3）
     for (final cage in puzzle.cages!) {
       int botR = -1, botC = -1;
       for (final idx in cage.cellIndices) {

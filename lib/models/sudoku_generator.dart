@@ -375,7 +375,7 @@ class SudokuGenerator {
       final saved = puzzle.cells[r][c];
       puzzle.cells[r][c] = 0;
       if (boardSize == 3) {
-        if (_countSolutions(puzzle.clone(), 2) != 1) {
+        if (_countSolutions(puzzle, 2) != 1) {
           puzzle.cells[r][c] = saved;
         } else {
           target--;
@@ -386,25 +386,69 @@ class SudokuGenerator {
     }
   }
 
+  /// 位计数（候选数统计，最多 9 位，循环即可）
+  int _popcount(int x) {
+    var c = 0;
+    while (x != 0) {
+      c += x & 1;
+      x >>= 1;
+    }
+    return c;
+  }
+  /// 快速统计解的数量（MRV 最少候选优先 + 位掩码，达到 limit 即提前返回）
   int _countSolutions(SudokuPuzzle puzzle, int limit) {
-    int count = 0;
-    void solve(List<List<int>> grid) {
-      if (count >= limit) return;
-      final empty = _findEmpty(grid);
-      if (empty == null) { count++; return; }
-      final (r, c) = empty;
-      for (int n = 1; n <= gridSize; n++) {
-        if (_isValid(grid, r, c, n)) {
-          grid[r][c] = n;
-          solve(grid);
-          grid[r][c] = 0;
-          if (count >= limit) return;
+    final gs = gridSize, b = boardSize;
+    final grid = List.generate(gs, (r) => List<int>.from(puzzle.cells[r]));
+    final rowMask = List<int>.filled(gs, 0);
+    final colMask = List<int>.filled(gs, 0);
+    final boxMask = List<int>.filled(gs, 0);
+    for (int r = 0; r < gs; r++) {
+      for (int c = 0; c < gs; c++) {
+        final v = grid[r][c];
+        if (v != 0) {
+          final bit = 1 << (v - 1);
+          rowMask[r] |= bit;
+          colMask[c] |= bit;
+          boxMask[(r ~/ b) * b + (c ~/ b)] |= bit;
         }
       }
     }
-    final grid = List.generate(
-        gridSize, (r) => List<int>.from(puzzle.cells[r]));
-    solve(grid);
+    int count = 0;
+    final full = (1 << gs) - 1;
+
+    void solve() {
+      if (count >= limit) return;
+      // MRV：选出候选数最少的空格（局部变量，避免递归相互覆盖）
+      int br = -1, bc = -1, bCand = 0;
+      var best = 10;
+      for (int r = 0; r < gs; r++) {
+        for (int c = 0; c < gs; c++) {
+          if (grid[r][c] != 0) continue;
+          final used = rowMask[r] | colMask[c] | boxMask[(r ~/ b) * b + (c ~/ b)];
+          final cand = full & ~used;
+          final n = _popcount(cand);
+          if (n < best) {
+            best = n; br = r; bc = c; bCand = cand;
+            if (n <= 1) break; // 唯一候选或死路
+          }
+        }
+        if (best <= 1) break;
+      }
+      if (br < 0) { count++; return; }
+      var cand = bCand;
+      final boxIdx = (br ~/ b) * b + (bc ~/ b);
+      while (cand != 0) {
+        final bit = cand & -cand;
+        cand ^= bit;
+        grid[br][bc] = bit.bitLength; // 1<<(n-1) 的 bitLength 即数字 n
+        rowMask[br] |= bit; colMask[bc] |= bit; boxMask[boxIdx] |= bit;
+        solve();
+        rowMask[br] ^= bit; colMask[bc] ^= bit; boxMask[boxIdx] ^= bit;
+        grid[br][bc] = 0;
+        if (count >= limit) return;
+      }
+    }
+    solve();
     return count;
   }
 }

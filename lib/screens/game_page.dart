@@ -75,7 +75,7 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   final Random _rng = Random();
-  late SudokuPuzzle _puzzle;
+  SudokuPuzzle _puzzle = SudokuPuzzle(boardSize: 3); // 默认空盘，避免异步生成完成前首帧未初始化红屏
   GlobalKey<SudokuBoardState> _boardKey = GlobalKey();
   final GlobalKey _menuIconKey = GlobalKey();
   int _seconds = 0;
@@ -354,32 +354,40 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _generating = true;
     if (mounted) setState(() {});
     // 后台 isolate 生成，避免卡 UI；期间“新局”按钮禁用，连点直接忽略
-    if (_isKiller) {
-      // 杀手难度正态分布：入门25%、中等50%、困难25%
-      final diffRoll = _rng.nextInt(100);
-      _killerDifficulty = diffRoll < 25
-          ? '入门'
-          : diffRoll < 75
-          ? '中等'
-          : '困难';
-      _puzzle = await compute(
-        generatePuzzleInIsolate,
-        <String, Object>{
-          'boardSize': 3,
-          'killer': true,
-          'difficulty': _killerDifficulty,
-        },
-      );
-    } else {
-      _pickClueCount();
-      _puzzle = await compute(
-        generatePuzzleInIsolate,
-        <String, Object>{
-          'boardSize': _boardSize,
-          'killer': false,
-          'clues': _clueCount,
-        },
-      );
+    try {
+      if (_isKiller) {
+        // 杀手难度正态分布：入门25%、中等50%、困难25%
+        final diffRoll = _rng.nextInt(100);
+        _killerDifficulty = diffRoll < 25
+            ? '入门'
+            : diffRoll < 75
+            ? '中等'
+            : '困难';
+        _puzzle = await compute(
+          generatePuzzleInIsolate,
+          <String, Object>{
+            'boardSize': 3,
+            'killer': true,
+            'difficulty': _killerDifficulty,
+          },
+        );
+      } else {
+        _pickClueCount();
+        _puzzle = await compute(
+          generatePuzzleInIsolate,
+          <String, Object>{
+            'boardSize': _boardSize,
+            'killer': false,
+            'clues': _clueCount,
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('新局生成失败，使用保底谜题：$e');
+      final gen = SudokuGenerator(boardSize: _isKiller ? 3 : _boardSize);
+      _puzzle = _isKiller
+          ? gen.generateKiller(difficulty: '入门')
+          : gen.generate(clues: 36);
     }
     _generating = false;
     if (!mounted) return;
