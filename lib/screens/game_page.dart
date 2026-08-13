@@ -1386,7 +1386,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       );
     }
     if (_hasGivenUp) {
-      return Text('已查看答案', style: style.copyWith(color: Colors.orange));
+      return Text('已查看答案', style: style.copyWith(color: Colors.amber.shade800));
     }
     if (_gameOver) {
       return Text(
