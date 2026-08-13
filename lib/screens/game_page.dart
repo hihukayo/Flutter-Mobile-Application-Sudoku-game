@@ -421,7 +421,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final becomingPaused = !_paused;
     setState(() => _paused = becomingPaused);
     if (becomingPaused && !_gameOver && !_isSolved && _dirty) {
-      _saveGame(silent: true); // 暂停时自动存档
+      _saveGame(silent: true); // 暂停时玩过（动过棋盘）才自动存档，内容与手动存档一致（含计时）
     }
   }
 
@@ -713,8 +713,19 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   // ---- 存档功能 ----
 
+  /// 正在进行的存档请求（读档前需等待其完成，避免拿到旧数据）
+  Future<void>? _saveFuture;
+
   /// 保存当前游戏进度到服务器
-  Future<void> _saveGame({bool silent = false}) async {
+  Future<void> _saveGame({bool silent = false}) {
+    final future = _doSaveGame(silent: silent);
+    _saveFuture = future;
+    return future.whenComplete(() {
+      if (identical(_saveFuture, future)) _saveFuture = null;
+    });
+  }
+
+  Future<void> _doSaveGame({required bool silent}) async {
     try {
       final cagesJson = _puzzle.cages
           ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum, 'op': c.op})
@@ -743,6 +754,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   Future<void> _loadGame() async {
     try {
       _click();
+      // 等待暂停时自动存档完成，避免读档拿到旧数据
+      while (_saveFuture != null) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
       final res = await ApiService.loadGame(username: widget.username);
       if (!mounted) return;
       if (res['success'] != true) {
