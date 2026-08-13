@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // import 'package:google_fonts/google_fonts.dart';
 import '../models/sudoku_game.dart';
+import '../services/app_theme.dart';
 
 class SudokuBoard extends StatefulWidget {
   final SudokuPuzzle puzzle;
@@ -121,6 +122,7 @@ class SudokuBoardState extends State<SudokuBoard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final textStyle = const TextStyle();
     final fontSize = _gs == 9 ? 22.0 : 14.0;
     final noteSize = _gs == 9 ? 13.0 : 9.0;
@@ -128,7 +130,7 @@ class SudokuBoardState extends State<SudokuBoard> {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFF455A64), width: 2.5),
+        border: Border.all(color: colors.boardBorder, width: 2.5),
         borderRadius: BorderRadius.circular(4),
       ),
       clipBehavior: Clip.hardEdge,
@@ -138,6 +140,7 @@ class SudokuBoardState extends State<SudokuBoard> {
   }
 
   Widget _buildRegularGrid(TextStyle textStyle, double fontSize, double noteSize, {bool uniformThin = false}) {
+    final colors = context.colors;
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _gs * _gs,
@@ -159,16 +162,16 @@ class SudokuBoardState extends State<SudokuBoard> {
         Color? textColor;
         FontWeight fontWeight;
         if (isGiven) {
-          textColor = const Color(0xFF1A1A2E);
+          textColor = colors.textPrimary;
           fontWeight = FontWeight.w700;
         } else if (val == 0) {
           textColor = null;
           fontWeight = FontWeight.normal;
         } else if (isError) {
-          textColor = Colors.red[600];
+          textColor = kRed;
           fontWeight = FontWeight.w600;
         } else {
-          textColor = Colors.green[700];
+          textColor = colors.userInput;
           fontWeight = FontWeight.w600;
         }
 
@@ -179,18 +182,22 @@ class SudokuBoardState extends State<SudokuBoard> {
           onTap: () => _onCellTap(r, c),
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFBBDEFB)
-                   : isHighlighted ? const Color(0xFFF0F4F8)
-                   : Colors.white,
+              color: isSelected ? colors.selectedBg
+                   : isHighlighted ? colors.highlightBg
+                   : colors.boardBg,
               border: Border(
-                right: BorderSide(
-                  color: (!uniformThin && (c + 1) % _bs == 0) ? const Color(0xFF455A64) : Colors.grey[300]!,
-                  width: (!uniformThin && (c + 1) % _bs == 0) ? 2 : 0.5,
-                ),
-                bottom: BorderSide(
-                  color: (!uniformThin && (r + 1) % _bs == 0) ? const Color(0xFF455A64) : Colors.grey[300]!,
-                  width: (!uniformThin && (r + 1) % _bs == 0) ? 2 : 0.5,
-                ),
+                right: c == _gs - 1
+                    ? BorderSide.none
+                    : BorderSide(
+                        color: (!uniformThin && (c + 1) % _bs == 0) ? colors.boardBorder : colors.boardLine,
+                        width: (!uniformThin && (c + 1) % _bs == 0) ? 2 : 0.5,
+                      ),
+                bottom: r == _gs - 1
+                    ? BorderSide.none
+                    : BorderSide(
+                        color: (!uniformThin && (r + 1) % _bs == 0) ? colors.boardBorder : colors.boardLine,
+                        width: (!uniformThin && (r + 1) % _bs == 0) ? 2 : 0.5,
+                      ),
               ),
             ),
             child: val != 0
@@ -212,6 +219,7 @@ class SudokuBoardState extends State<SudokuBoard> {
   }
 
   Widget _buildKillerGrid(TextStyle textStyle, double fontSize, double noteSize, bool isKiller) {
+    final colors = context.colors;
     return Stack(
       children: [
         _buildRegularGrid(textStyle, fontSize, noteSize, uniformThin: true),
@@ -222,6 +230,9 @@ class SudokuBoardState extends State<SudokuBoard> {
               painter: _CagePainter(
                 puzzle: widget.puzzle,
                 invalidCages: widget.puzzle.invalidCages(),
+                lineColor: colors.boardBorder,
+                badColor: kRed,
+                labelColor: colors.textSecondary,
               ),
             ),
           ),
@@ -231,6 +242,7 @@ class SudokuBoardState extends State<SudokuBoard> {
   }
 
   Widget _buildNotes(int r, int c, TextStyle ts, double fontSize) {
+    final colors = context.colors;
     if (widget.puzzle.notes[r][c].isEmpty) return const SizedBox.shrink();
     final n = widget.puzzle.notes[r][c].first;
     return Padding(
@@ -242,7 +254,7 @@ class SudokuBoardState extends State<SudokuBoard> {
           style: ts.copyWith(
             fontSize: fontSize,
             fontWeight: FontWeight.w500,
-            color: const Color(0xFF0B4CFF),
+            color: colors.noteText,
           ),
         ),
       ),
@@ -254,8 +266,11 @@ class SudokuBoardState extends State<SudokuBoard> {
 class _CagePainter extends CustomPainter {
   final SudokuPuzzle puzzle;
   final Set<int> invalidCages;
+  final Color lineColor;
+  final Color badColor;
+  final Color labelColor;
 
-  _CagePainter({required this.puzzle, this.invalidCages = const {}});
+  _CagePainter({required this.puzzle, this.invalidCages = const {}, this.lineColor = kDarkSlate, this.badColor = kRed, this.labelColor = kDarkSlate});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -276,7 +291,7 @@ class _CagePainter extends CustomPainter {
       for (int ci = 0; ci < puzzle.cages!.length; ci++) {
         if (invalidCages.contains(ci) != isBad) continue;
         final paint = Paint()
-          ..color = isBad ? const Color(0xFFE53935) : const Color(0xFF455A64)
+          ..color = isBad ? badColor : lineColor
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0;
 
@@ -320,8 +335,8 @@ class _CagePainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: cage.labelText,
-          style: const TextStyle(
-            color: Color(0xFF455A64), fontSize: 8, fontWeight: FontWeight.w700,
+          style: TextStyle(
+            color: labelColor, fontSize: 8, fontWeight: FontWeight.w700,
           ),
         ),
         textDirection: TextDirection.ltr,

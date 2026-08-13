@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'game_page.dart';
 import 'rank_page.dart';
 import 'profile_page.dart';
+import '../services/app_theme.dart';
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -35,18 +36,36 @@ class _HomePageState extends State<HomePage> {
         width: 480,
         child: Scaffold(
           body: IndexedStack(index: _currentIndex, children: pages),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: (i) {
-              setState(() => _currentIndex = i);
-              if (i == 1) _rankKey.currentState?.refresh();
-              if (i == 2) _profileKey.currentState?.refresh();
-            },
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.grid_on, color: Color(0xFF455A64)), label: '数独'),
-              NavigationDestination(icon: Icon(Icons.emoji_events, color: Color(0xFF455A64)), label: '排行榜'),
-              NavigationDestination(icon: Icon(Icons.person, color: Color(0xFF455A64)), label: '我的'),
-            ],
+          bottomNavigationBar: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              backgroundColor: context.colors.surfaceAlt,
+              surfaceTintColor: Colors.transparent,
+              indicatorColor: context.colors.selectedBg,
+              iconTheme: WidgetStateProperty.resolveWith((states) {
+                final selected = states.contains(WidgetState.selected);
+                return IconThemeData(color: selected ? context.colors.primary : context.colors.textSecondary);
+              }),
+              labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                final selected = states.contains(WidgetState.selected);
+                return TextStyle(
+                  fontSize: 12,
+                  color: selected ? context.colors.primary : context.colors.textSecondary,
+                );
+              }),
+            ),
+            child: NavigationBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (i) {
+                setState(() => _currentIndex = i);
+                if (i == 1) _rankKey.currentState?.refresh();
+                if (i == 2) _profileKey.currentState?.refresh();
+              },
+              destinations: const [
+                NavigationDestination(icon: Icon(Icons.grid_on), label: '数独'),
+                NavigationDestination(icon: Icon(Icons.emoji_events), label: '排行榜'),
+                NavigationDestination(icon: Icon(Icons.person), label: '我的'),
+              ],
+            ),
           ),
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/window_util.dart';
 import '../services/app_snack.dart';
+import '../services/app_theme.dart';
 import '../widgets/masked_text_controller.dart';
 import 'login_page.dart';
 
@@ -42,7 +43,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AppBar(title: Text('设置')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -84,6 +85,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     password: pwd,
                   ),
                 ),
+              ),
+              const SizedBox(height: 12),
+              _buildCard(
+                icon: _themeIcon(),
+                title: '深色模式',
+                subtitle: _themeLabel(),
+                onTap: _showThemeModeDialog,
               ),
               const SizedBox(height: 12),
               _buildCard(
@@ -135,11 +143,74 @@ class _SettingsPageState extends State<SettingsPage> {
   }) {
     return Card(
       child: ListTile(
-        leading: Icon(icon, color: Colors.red),
-        title: Text(title, style: const TextStyle(color: Colors.red)),
+        leading: Icon(icon, color: context.colors.danger),
+        title: Text(title, style: TextStyle(color: context.colors.danger)),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
+      ),
+    );
+  }
+
+  IconData _themeIcon() {
+    switch (themeModeNotifier.value) {
+      case 'light':
+        return Icons.light_mode_outlined;
+      case 'dark':
+        return Icons.dark_mode_outlined;
+      default:
+        return Icons.contrast;
+    }
+  }
+
+  String _themeLabel() {
+    switch (themeModeNotifier.value) {
+      case 'light':
+        return '浅色';
+      case 'dark':
+        return '深色';
+      default:
+        return '跟随系统';
+    }
+  }
+
+  Future<void> _showThemeModeDialog() async {
+    final colors = context.colors;
+    final options = [
+      ('跟随系统', 'system', Icons.contrast),
+      ('浅色', 'light', Icons.light_mode_outlined),
+      ('深色', 'dark', Icons.dark_mode_outlined),
+    ];
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('深色模式', style: TextStyle(fontSize: 18)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (label, mode, icon) in options)
+              ListTile(
+                leading: Icon(
+                  icon,
+                  color: themeModeNotifier.value == mode
+                      ? colors.primary
+                      : colors.textSecondary,
+                ),
+                title: Text(label),
+                trailing: themeModeNotifier.value == mode
+                    ? Icon(Icons.check, color: colors.primary)
+                    : null,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  // 先等弹窗关闭动画结束再切换主题，避免两个动画重叠造成卡顿
+                  Future.delayed(
+                    const Duration(milliseconds: 200),
+                    () => setThemeMode(mode),
+                  );
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -149,14 +220,14 @@ class _SettingsPageState extends State<SettingsPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('服务器地址', style: TextStyle(fontSize: 18)),
+        title: Text('服务器地址', style: TextStyle(fontSize: 18)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '留空则自动连接（USB / 模拟器）',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+              style: TextStyle(fontSize: 13, color: context.colors.textFaint),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -261,7 +332,7 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('修改密码', style: TextStyle(fontSize: 18)),
+        title: Text('修改密码', style: TextStyle(fontSize: 18)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -337,17 +408,17 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text(
+        title: Text(
           '注销账号',
-          style: TextStyle(fontSize: 18, color: Colors.red),
+          style: TextStyle(fontSize: 18, color: context.colors.danger),
         ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 '此操作不可恢复，所有数据将被永久删除。',
-                style: TextStyle(color: Colors.red, fontSize: 13),
+                style: TextStyle(color: context.colors.danger, fontSize: 13),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -389,8 +460,8 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: context.colors.danger,
+              foregroundColor: context.colors.onPrimary,
             ),
             onPressed: () async {
               if (pwdCtrl.realText != confirmPwdCtrl.realText) {

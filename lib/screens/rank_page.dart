@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/app_theme.dart';
 
 class RankPage extends StatefulWidget {
   final String username;
@@ -59,15 +60,15 @@ class RankPageState extends State<RankPage> {
         // 标题栏
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          color: const Color(0xFFF5F7FA),
+          color: context.colors.surfaceAlt,
           child: Row(
             children: [
               const SizedBox(width: 4),
-              const SizedBox(width: 36, child: Center(child: Text('排名', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78909C))))),
+              SizedBox(width: 36, child: Center(child: Text('排名', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.colors.textFaint)))),
               const SizedBox(width: 4),
-              const Expanded(child: Text('玩家', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78909C)))),
-              SizedBox(width: 72, child: Text('积分', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF455A64)))),
-              const SizedBox(width: 64, child: Text('胜率', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF78909C)))),
+              Expanded(child: Text('玩家', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.colors.textFaint))),
+              SizedBox(width: 72, child: Text('积分', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.colors.textSecondary))),
+              SizedBox(width: 64, child: Text('胜率', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.colors.textFaint))),
             ],
           ),
         ),
@@ -87,9 +88,9 @@ class RankPageState extends State<RankPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.cloud_off, size: 48, color: Colors.grey[400]),
+            Icon(Icons.cloud_off, size: 48, color: context.colors.textFaint),
             const SizedBox(height: 12),
-            Text(_error, style: TextStyle(color: Colors.grey[600])),
+            Text(_error, style: TextStyle(color: context.colors.textSecondary)),
             const SizedBox(height: 12),
             TextButton.icon(
               onPressed: refresh,
@@ -105,11 +106,11 @@ class RankPageState extends State<RankPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.emoji_events_outlined, size: 64, color: Colors.grey[300]),
+            Icon(Icons.emoji_events_outlined, size: 64, color: context.colors.divider),
             const SizedBox(height: 12),
-            Text('暂无排行数据', style: TextStyle(fontSize: 16, color: Colors.grey[500])),
+            Text('暂无排行数据', style: TextStyle(fontSize: 16, color: context.colors.textFaint)),
             const SizedBox(height: 4),
-            Text('完成一局游戏后数据将自动记录', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+            Text('完成一局游戏后数据将自动记录', style: TextStyle(fontSize: 13, color: context.colors.textFaint)),
           ],
         ),
       );
@@ -155,7 +156,7 @@ class RankPageState extends State<RankPage> {
         height: 26,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF0B4CFF) : Colors.grey[200],
+          color: isMe ? context.colors.primary : context.colors.chipBg,
           borderRadius: BorderRadius.circular(13),
         ),
         child: Text(
@@ -163,7 +164,7 @@ class RankPageState extends State<RankPage> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: isMe ? Colors.white : const Color(0xFF455A64),
+            color: isMe ? context.colors.onPrimary : context.colors.textSecondary,
           ),
         ),
       );
@@ -178,15 +179,15 @@ class RankPageState extends State<RankPage> {
     } else if (winRate > 0) {
       winRateColor = const Color(0xFFE65100);
     } else {
-      winRateColor = Colors.grey[500]!;
+      winRateColor = context.colors.textFaint;
     }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
-        color: isMe ? const Color(0xFFF0F4FF) : null,
+        color: isMe ? context.colors.selectedBg : null,
         borderRadius: BorderRadius.circular(8),
-        border: isMe ? Border.all(color: const Color(0xFF0B4CFF).withValues(alpha: 0.3)) : null,
+        border: isMe ? Border.all(color: context.colors.primary.withValues(alpha: 0.3)) : null,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
@@ -203,12 +204,12 @@ class RankPageState extends State<RankPage> {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: isMe ? const Color(0xFF0B4CFF) : Colors.black87,
+                      color: isMe ? context.colors.primary : context.colors.textPrimary,
                     ),
                   ),
                   if (isMe) ...[
                     const SizedBox(width: 6),
-                    const Text('我', style: TextStyle(fontSize: 12, color: Color(0xFF0B4CFF), fontWeight: FontWeight.w600)),
+                    Text('我', style: TextStyle(fontSize: 12, color: context.colors.primary, fontWeight: FontWeight.w600)),
                   ],
                 ],
               ),
@@ -218,7 +219,7 @@ class RankPageState extends State<RankPage> {
               child: Text(
                 _formatScore(totalScore),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF455A64)),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.colors.textSecondary),
               ),
             ),
             SizedBox(

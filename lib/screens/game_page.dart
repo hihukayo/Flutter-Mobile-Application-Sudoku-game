@@ -10,13 +10,13 @@ import '../models/sudoku_game.dart';
 import '../models/sudoku_generator.dart';
 import '../widgets/sudoku_board.dart';
 import '../services/api_service.dart';
+import '../services/app_theme.dart';
 import '../services/window_util.dart';
 
 const _clickChannel = MethodChannel('com.example.puzzle_game/click');
 final AudioPlayer _webPlayer = AudioPlayer();
 int _lastClickMs = 0; // 全局防抖时间戳
 
-const _blue = Color(0xFF0B4CFF);
 const _red = Color(0xFFE53935);
 
 // ---- 难度参数（提示数范围） ----
@@ -146,10 +146,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.cloud_download_rounded,
                     size: 44,
-                    color: Color(0xFF0B4CFF),
+                    color: context.colors.primary,
                   ),
                   const SizedBox(height: 14),
                   const Text(
@@ -160,9 +160,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                   Text(
                     '您有一个存档\n($savedAt)\n是否继续上次的游戏？',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF78909C),
+                      color: context.colors.textFaint,
                       height: 1.5,
                     ),
                   ),
@@ -176,12 +176,14 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            side: BorderSide(color: Colors.grey[300]!),
+                            side: BorderSide(color: context.colors.divider),
                           ),
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text(
+                          child: Text(
                             '新游戏',
-                            style: TextStyle(color: Color(0xFF455A64)),
+                            style: TextStyle(
+                              color: context.colors.textSecondary,
+                            ),
                           ),
                         ),
                       ),
@@ -190,8 +192,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            backgroundColor: const Color(0xFF0B4CFF),
-                            foregroundColor: Colors.white,
+                            backgroundColor: context.colors.primary,
+                            foregroundColor: context.colors.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -363,24 +365,18 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
             : diffRoll < 75
             ? '中等'
             : '困难';
-        _puzzle = await compute(
-          generatePuzzleInIsolate,
-          <String, Object>{
-            'boardSize': 3,
-            'killer': true,
-            'difficulty': _killerDifficulty,
-          },
-        );
+        _puzzle = await compute(generatePuzzleInIsolate, <String, Object>{
+          'boardSize': 3,
+          'killer': true,
+          'difficulty': _killerDifficulty,
+        });
       } else {
         _pickClueCount();
-        _puzzle = await compute(
-          generatePuzzleInIsolate,
-          <String, Object>{
-            'boardSize': _boardSize,
-            'killer': false,
-            'clues': _clueCount,
-          },
-        );
+        _puzzle = await compute(generatePuzzleInIsolate, <String, Object>{
+          'boardSize': _boardSize,
+          'killer': false,
+          'clues': _clueCount,
+        });
       }
     } catch (e) {
       debugPrint('新局生成失败，使用保底谜题：$e');
@@ -779,10 +775,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.cloud_download_rounded,
                     size: 44,
-                    color: Color(0xFF0B4CFF),
+                    color: context.colors.primary,
                   ),
                   const SizedBox(height: 14),
                   const Text(
@@ -793,9 +789,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                   Text(
                     '存档时间\n$savedAt\n当前未保存的进度将丢失。',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF78909C),
+                      color: context.colors.textFaint,
                       height: 1.5,
                     ),
                   ),
@@ -809,12 +805,14 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            side: BorderSide(color: Colors.grey[300]!),
+                            side: BorderSide(color: context.colors.divider),
                           ),
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text(
+                          child: Text(
                             '取消',
-                            style: TextStyle(color: Color(0xFF455A64)),
+                            style: TextStyle(
+                              color: context.colors.textSecondary,
+                            ),
                           ),
                         ),
                       ),
@@ -823,8 +821,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            backgroundColor: const Color(0xFF0B4CFF),
-                            foregroundColor: Colors.white,
+                            backgroundColor: context.colors.primary,
+                            foregroundColor: context.colors.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -908,7 +906,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _paused = false;
     _undoStack.clear();
     _redoStack.clear();
-    _dirty = false;
+    // 读档恢复的进度视为可存档：暂停/退出自动保存（含计时），无需再动棋盘
+    _dirty = true;
     _boardKey = GlobalKey();
 
     _startTimer();
@@ -1072,7 +1071,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
               const Text('3×3 算数', style: TextStyle(fontSize: 13)),
               const SizedBox(width: 18),
               if (isKillerSelected)
-                const Icon(Icons.check, size: 14, color: _blue),
+                Icon(Icons.check, size: 14, color: context.colors.primary),
             ],
           ),
         ),
@@ -1086,7 +1085,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
             children: [
               const Text('3×3 常规', style: TextStyle(fontSize: 13)),
               const SizedBox(width: 18),
-              if (is3Selected) const Icon(Icons.check, size: 14, color: _blue),
+              if (is3Selected)
+                Icon(Icons.check, size: 14, color: context.colors.primary),
             ],
           ),
         ),
@@ -1100,7 +1100,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
             children: [
               const Text('4×4 常规', style: TextStyle(fontSize: 13)),
               const SizedBox(width: 18),
-              if (is4Selected) const Icon(Icons.check, size: 14, color: _blue),
+              if (is4Selected)
+                Icon(Icons.check, size: 14, color: context.colors.primary),
             ],
           ),
         ),
@@ -1154,7 +1155,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final infoStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w500);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.colors.background,
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         leading: Padding(
@@ -1162,9 +1163,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           child: GestureDetector(
             key: _menuIconKey,
             onTap: () => _showModeMenu(),
-            child: const Icon(
+            child: Icon(
               Icons.more_horiz,
-              color: Color(0xFF78909C),
+              color: context.colors.textFaint,
               size: 24,
             ),
           ),
@@ -1175,8 +1176,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: context.colors.background,
+        foregroundColor: context.colors.textPrimary,
         elevation: 0,
         actions: [
           Padding(
@@ -1190,7 +1191,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                     },
               child: Icon(
                 _noteMode ? Icons.edit_note : Icons.edit_note_outlined,
-                color: _noteMode ? _blue : const Color(0xFF78909C),
+                color: _noteMode
+                    ? context.colors.primary
+                    : context.colors.textFaint,
                 size: 24,
               ),
             ),
@@ -1256,7 +1259,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                         size: 14,
                         color: _errors >= _maxErrors
                             ? _red
-                            : const Color(0xFF78909C),
+                            : context.colors.textFaint,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -1266,7 +1269,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                           fontWeight: FontWeight.w500,
                           color: _errors >= _maxErrors
                               ? _red
-                              : const Color(0xFF455A64),
+                              : context.colors.textSecondary,
                         ),
                       ),
                       const SizedBox(width: 24),
@@ -1279,8 +1282,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                               _paused ? Icons.play_arrow : Icons.pause,
                               size: 14,
                               color: (_gameOver || _hasGivenUp)
-                                  ? Colors.grey[350]!
-                                  : _blue,
+                                  ? context.colors.disabledText
+                                  : context.colors.primary,
                             ),
                             const SizedBox(width: 3),
                             Text(
@@ -1289,8 +1292,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: (_gameOver || _hasGivenUp)
-                                    ? Colors.grey[350]!
-                                    : const Color(0xFF455A64),
+                                    ? context.colors.disabledText
+                                    : context.colors.textSecondary,
                               ),
                             ),
                           ],
@@ -1313,7 +1316,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF455A64),
+                          color: context.colors.textSecondary,
                         ),
                       ),
                     ],
@@ -1342,12 +1345,12 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                                   onCellChanged: _onCellChanged,
                                   onNoteChanged: _onNoteChanged,
                                   onRefresh: () => setState(() {}),
-                                  onRequestInput: () {
+                                  onRequestInput: () async {
+                                    await setSoftInputMode('nothing');
                                     _textFocus.requestFocus();
                                     if (!kIsWeb) {
-                                      SystemChannels.textInput.invokeMethod(
-                                        'TextInput.show',
-                                      );
+                                      await SystemChannels.textInput
+                                          .invokeMethod('TextInput.show');
                                     }
                                   },
                                 ),
@@ -1377,7 +1380,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     if (_isSolved) {
       return Text(
         '解答正确！用时 ${_formatTime(_seconds)}，获得 $_lastScore 积分',
-        style: style.copyWith(color: Colors.green),
+        style: style.copyWith(color: context.colors.userInput),
       );
     }
     if (_hasGivenUp) {
@@ -1390,12 +1393,15 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       );
     }
     if (_paused) {
-      return Text('已暂停', style: style.copyWith(color: const Color(0xFF455A64)));
+      return Text(
+        '已暂停',
+        style: style.copyWith(color: context.colors.textSecondary),
+      );
     }
     if (_statusMsg.isNotEmpty) {
       return Text(
         _statusMsg,
-        style: style.copyWith(color: const Color(0xFF455A64)),
+        style: style.copyWith(color: context.colors.textSecondary),
       );
     }
     return const SizedBox.shrink();
@@ -1403,97 +1409,88 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   Widget _buildBottomBar(TextStyle s) {
     final disabled = _paused || _gameOver;
-    return Container(
-      color: Colors.white,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Divider(height: 1, thickness: 0.5),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _textBtn(
-                      '新局',
-                      _generating ? null : _newGame,
-                      s,
-                      icon: Icons.refresh,
-                    ),
-                    _textBtn(
-                      '完成',
-                      (disabled || _isSolved || _hasGivenUp)
-                          ? null
-                          : _checkCompletion,
-                      s,
-                      fill: true,
-                      icon: Icons.star_border,
-                      overlayIcon: Icons.check,
-                    ),
-                    _textBtn(
-                      '求解',
-                      (disabled || _isSolved || _hasGivenUp)
-                          ? null
-                          : _autoSolve,
-                      s,
-                      icon: Icons.lightbulb_outline,
-                      iconAtEnd: true,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _iconTextBtn(
-                      Icons.undo,
-                      '撤销',
-                      disabled ? null : (_undoStack.isEmpty ? null : _undo),
-                      s,
-                    ),
-                    _iconTextBtn(Icons.replay, '重置', _restart, s),
-                    _iconTextBtn(
-                      Icons.redo,
-                      '重做',
-                      disabled ? null : (_redoStack.isEmpty ? null : _redo),
-                      s,
-                      iconAtEnd: true,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Divider(
-                  height: 1,
-                  thickness: 0.5,
-                  indent: 40,
-                  endIndent: 40,
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _iconTextBtn(Icons.cloud_upload, '存档', () {
-                      _click();
-                      _saveGame();
-                    }, s),
-                    Container(
-                      width: 1,
-                      height: 24,
-                      color: Colors.grey[300],
-                      margin: const EdgeInsets.symmetric(horizontal: 24),
-                    ),
-                    _iconTextBtn(Icons.cloud_download, '读档', _loadGame, s),
-                  ],
-                ),
-              ],
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Divider(height: 1, thickness: 0.5),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _textBtn(
+                    '新局',
+                    _generating ? null : _newGame,
+                    s,
+                    icon: Icons.refresh,
+                  ),
+                  _textBtn(
+                    '完成',
+                    (disabled || _isSolved || _hasGivenUp)
+                        ? null
+                        : _checkCompletion,
+                    s,
+                    fill: true,
+                    icon: Icons.star_border,
+                    overlayIcon: Icons.check,
+                  ),
+                  _textBtn(
+                    '求解',
+                    (disabled || _isSolved || _hasGivenUp) ? null : _autoSolve,
+                    s,
+                    icon: Icons.lightbulb_outline,
+                    iconAtEnd: true,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _iconTextBtn(
+                    Icons.undo,
+                    '撤销',
+                    disabled ? null : (_undoStack.isEmpty ? null : _undo),
+                    s,
+                  ),
+                  _iconTextBtn(Icons.replay, '重置', _restart, s),
+                  _iconTextBtn(
+                    Icons.redo,
+                    '重做',
+                    disabled ? null : (_redoStack.isEmpty ? null : _redo),
+                    s,
+                    iconAtEnd: true,
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const Divider(height: 1, thickness: 0.5, indent: 40, endIndent: 40),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _iconTextBtn(Icons.cloud_upload, '存档', () {
+                _click();
+                _saveGame();
+              }, s),
+              Container(
+                width: 1,
+                height: 24,
+                color: context.colors.divider,
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+              ),
+              _iconTextBtn(Icons.cloud_download, '读档', _loadGame, s),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1508,10 +1505,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }) {
     final isDisabled = onTap == null;
     final color = isDisabled
-        ? Colors.grey[350]!
+        ? context.colors.disabledText
         : fill
-        ? Colors.white
-        : const Color(0xFF455A64);
+        ? context.colors.onPrimary
+        : context.colors.textSecondary;
     final textStyle = s.copyWith(
       fontSize: 15,
       fontWeight: fill ? FontWeight.w600 : FontWeight.w500,
@@ -1527,11 +1524,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isDisabled
-                ? Colors.grey[100]!
-                : fill
-                ? _blue
-                : Colors.transparent,
+            color: fill ? context.colors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           // 图标+文字整体居中，间距 4（与下排撤销/重置/重做一致）
@@ -1575,7 +1568,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     bool iconAtEnd = false,
   }) {
     final isDisabled = onTap == null;
-    final color = isDisabled ? Colors.grey[350]! : const Color(0xFF455A64);
+    final color = isDisabled
+        ? context.colors.disabledText
+        : context.colors.textSecondary;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1585,6 +1580,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           width: 88,
           height: 44,
           alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
           // 图标+文字整体居中，间距 4（撤销/重置/重做/存档/读档统一）
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

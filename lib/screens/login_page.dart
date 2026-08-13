@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/window_util.dart';
 import '../services/app_snack.dart';
+import '../services/app_theme.dart';
 import 'register_page.dart';
 import '../widgets/masked_text_controller.dart';
 import '../widgets/server_address_dialog.dart';
@@ -114,7 +115,7 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 4),
                     Text(
                       'Sudoku',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 14, color: context.colors.textSecondary),
                     ),
                     const SizedBox(height: 40),
                     TextField(

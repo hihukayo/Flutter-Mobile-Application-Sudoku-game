@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login_page.dart';
 import 'settings_page.dart';
 import '../services/api_service.dart';
+import '../services/app_theme.dart';
 
 class ProfilePage extends StatefulWidget {
   final String username;
@@ -123,22 +124,22 @@ class ProfilePageState extends State<ProfilePage> {
                 children: [
                   CircleAvatar(
                     radius: 44,
-                    backgroundColor: const Color(0xFF0B4CFF),
+                    backgroundColor: context.colors.primary,
                     backgroundImage: _avatarBytes != null ? MemoryImage(_avatarBytes!) : null,
                     child: _avatarBytes == null
                         ? Text(
                             widget.username.isNotEmpty ? widget.username[0].toUpperCase() : '?',
-                            style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.w700),
+                            style: TextStyle(fontSize: 36, color: context.colors.onPrimary, fontWeight: FontWeight.w700),
                           )
                         : null,
                   ),
                   Container(
                     padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    decoration: BoxDecoration(
+                      color: context.colors.surface,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.camera_alt, size: 16, color: Color(0xFF455A64)),
+                    child: Icon(Icons.camera_alt, size: 16, color: context.colors.textSecondary),
                   ),
                 ],
               ),
@@ -148,7 +149,7 @@ class ProfilePageState extends State<ProfilePage> {
           Center(
             child: Text(
               widget.username,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A1A2E)),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
             ),
           ),
           const SizedBox(height: 24),
@@ -157,13 +158,13 @@ class ProfilePageState extends State<ProfilePage> {
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            color: const Color(0xFFF5F7FA),
+            color: context.colors.surfaceAlt,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _statItem(Icons.sports_esports, '总局数', _statsLoading ? '...' : '$_totalGames', const Color(0xFF0B4CFF)),
+                  _statItem(Icons.sports_esports, '总局数', _statsLoading ? '...' : '$_totalGames', context.colors.primary),
                   _divider(),
                   _statItem(Icons.emoji_events, '总积分', _statsLoading ? '...' : '$_totalScore', const Color(0xFFE65100)),
                   _divider(),
@@ -181,9 +182,9 @@ class ProfilePageState extends State<ProfilePage> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.settings, color: Color(0xFF455A64)),
+                  leading: Icon(Icons.settings, color: context.colors.textSecondary),
                   title: const Text('设置', style: TextStyle(fontSize: 15)),
-                  trailing: const Icon(Icons.chevron_right, color: Color(0xFFB0BEC5)),
+                  trailing: Icon(Icons.chevron_right, color: context.colors.textFaint),
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -199,11 +200,12 @@ class ProfilePageState extends State<ProfilePage> {
           // ---- 退出登录 ----
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red[400],
-                side: BorderSide(color: Colors.red[200]!),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: context.colors.danger,
+                foregroundColor: context.colors.onPrimary,
+                elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () async {
@@ -243,13 +245,13 @@ class ProfilePageState extends State<ProfilePage> {
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF78909C)),
+          style: TextStyle(fontSize: 12, color: context.colors.textFaint),
         ),
       ],
     );
   }
 
   Widget _divider() {
-    return Container(width: 1, height: 40, color: Colors.grey[300]);
+    return Container(width: 1, height: 40, color: context.colors.divider);
   }
 }

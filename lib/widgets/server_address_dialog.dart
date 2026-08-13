@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/app_theme.dart';
 
 /// 服务器地址设置对话框（登录/注册前也可使用）
 Future<bool> showServerAddressDialog(BuildContext context) async {
@@ -58,7 +59,7 @@ class _ServerAddressDialogState extends State<_ServerAddressDialog> {
         children: [
           Text(
             '留空则自动连接（USB / 模拟器）',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
           ),
           const SizedBox(height: 14),
           TextField(

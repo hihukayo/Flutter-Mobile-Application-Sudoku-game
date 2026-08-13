@@ -4,27 +4,58 @@ import 'screens/login_page.dart';
 import 'screens/home_page.dart';
 import 'services/api_service.dart';
 import 'services/app_snack.dart';
+import 'services/app_theme.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await ApiService.loadServerAddress();
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '数独 Sudoku',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF455A64)),
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(),
-      scaffoldMessengerKey: appMessengerKey,
-      debugShowCheckedModeBanner: false,
+    return ValueListenableBuilder<String>(
+      valueListenable: themeModeNotifier,
+      builder: (context, mode, _) {
+        final themeMode = switch (mode) {
+          'light' => ThemeMode.light,
+          'dark' => ThemeMode.dark,
+          _ => ThemeMode.system,
+        };
+        return MaterialApp(
+          title: '数独 Sudoku',
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF455A64),
+            ),
+            scaffoldBackgroundColor: lightAppColors.background,
+            extensions: const [lightAppColors],
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF455A64),
+              brightness: Brightness.dark,
+            ),
+            scaffoldBackgroundColor: darkAppColors.background,
+            extensions: const [darkAppColors],
+          ),
+          themeMode: themeMode,
+          themeAnimationDuration: Duration.zero,
+          themeAnimationCurve: Curves.easeInOut,
+          home: const SplashScreen(),
+          scaffoldMessengerKey: appMessengerKey,
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }
@@ -44,14 +75,27 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkLogin() async {
+    final stopwatch = Stopwatch()..start();
+    await ApiService.loadServerAddress();
+    await loadThemeMode();
     final prefs = await SharedPreferences.getInstance();
     final username = prefs.getString('login_username');
     final phone = prefs.getString('login_phone');
 
+    // 保证启动转圈至少可见约 800ms，避免一闪而过
+    final remain = 800 - stopwatch.elapsedMilliseconds;
+    if (remain > 0) {
+      await Future.delayed(Duration(milliseconds: remain));
+    }
+    if (!mounted) {
+      return;
+    }
     if (username != null && phone != null) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => HomePage(username: username, phone: phone)),
+        MaterialPageRoute(
+          builder: (_) => HomePage(username: username, phone: phone),
+        ),
       );
     } else {
       Navigator.pushReplacement(
@@ -63,8 +107,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    return Scaffold(
+      backgroundColor: context.colors.background,
+      body: Center(
+        child: CircularProgressIndicator(color: context.colors.primary),
+      ),
     );
   }
 }
