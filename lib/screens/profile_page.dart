@@ -19,7 +19,7 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => ProfilePageState();
 }
 
-class ProfilePageState extends State<ProfilePage> {
+class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   Uint8List? _avatarBytes;
   int _totalGames = 0;
   int _completedGames = 0;
@@ -28,14 +28,22 @@ class ProfilePageState extends State<ProfilePage> {
   bool _statsLoading = true;
   Map<String, int> _contribMap = {};
   bool _contribLoading = true;
+  bool _contribError = false;
   final ScrollController _calendarScroll = ScrollController();
   bool _calScrolledToEnd = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadAvatar();
     // 统计与贡献日历在切换到“我的”页时由 HomePage 触发 refresh 加载，避免启动并发请求拖慢进入
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 回到前台时刷新统计与日历，保证数据时时最新（后端关闭时会提示加载失败）
+    if (state == AppLifecycleState.resumed) refresh();
   }
 
   Future<void> refresh() async {
@@ -68,6 +76,7 @@ class ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _calendarScroll.dispose();
     super.dispose();
   }
@@ -87,13 +96,24 @@ class ProfilePageState extends State<ProfilePage> {
         }
         setState(() {
           _contribMap = map;
+          _contribError = false;
           _contribLoading = false;
         });
       } else {
-        setState(() => _contribLoading = false);
+        setState(() {
+          _contribMap = {};
+          _contribError = true;
+          _contribLoading = false;
+        });
       }
     } catch (_) {
-      if (mounted) setState(() => _contribLoading = false);
+      if (mounted) {
+        setState(() {
+          _contribMap = {};
+          _contribError = true;
+          _contribLoading = false;
+        });
+      }
     }
   }
 
@@ -329,6 +349,13 @@ class ProfilePageState extends State<ProfilePage> {
               const SizedBox(
                 height: 120,
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+              )
+            else if (_contribError)
+              SizedBox(
+                height: 90,
+                child: Center(
+                  child: Text('日历加载失败，请下拉重试', style: TextStyle(fontSize: 13, color: context.colors.textSecondary)),
+                ),
               )
             else if (_contribMap.isEmpty)
               SizedBox(
