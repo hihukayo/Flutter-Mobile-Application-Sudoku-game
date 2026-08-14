@@ -241,4 +241,15 @@ class ApiService {
     ));
     return jsonDecode(res.body);
   }
+
+  // ---- 完成日历（按天统计完成局数） ----
+  static Future<Map<String, dynamic>> getContributions({
+    required String username,
+    int days = 365,
+  }) async {
+    final res = await _guard(http.get(
+      Uri.parse('$baseUrl/rank/contributions?username=${Uri.encodeComponent(username)}&days=$days'),
+    ));
+    return jsonDecode(res.body);
+  }
 }
