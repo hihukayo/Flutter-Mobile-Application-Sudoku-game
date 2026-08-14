@@ -1316,8 +1316,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // 错误次数整体右移：左侧 20 + 与计时器间距 16 = 36，保持计时器原位不动
-                      const SizedBox(width: 20),
+                      // 错误次数右侧间距与计时器右侧间距对称（均 24），左侧 12 保持视觉平衡
+                      const SizedBox(width: 12),
                       Icon(
                         Icons.error_outline,
                         size: 14,
@@ -1336,7 +1336,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                               : context.colors.textSecondary,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 24),
                       GestureDetector(
                         onTap: (_gameOver || _hasGivenUp) ? null : _togglePause,
                         child: Row(
