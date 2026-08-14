@@ -155,19 +155,6 @@ class ProfilePageState extends State<ProfilePage> {
       onRefresh: refresh,
       child: Stack(
         children: [
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            right: 4,
-            child: IconButton(
-              icon: Icon(Icons.settings, color: context.colors.textSecondary),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SettingsPage(username: widget.username, phone: widget.phone),
-                ),
-              ),
-            ),
-          ),
           ListView(
             padding: EdgeInsets.only(
               left: 20,
@@ -267,6 +254,19 @@ class ProfilePageState extends State<ProfilePage> {
             ),
           ),
             ],
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 4,
+            child: IconButton(
+              icon: Icon(Icons.settings, color: context.colors.textSecondary),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SettingsPage(username: widget.username, phone: widget.phone),
+                ),
+              ),
+            ),
           ),
         ],
       ),
