@@ -98,6 +98,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   Timer? _timer;
   Timer? _statusTimer;
   String _statusMsg = '';
+  bool _loadingSave = false;
   bool _bgAutoSaved = false; // 后台自动保存成功后回到前台提示一次
   int _lastScore = 0;
   final List<_UndoEntry> _undoStack = [];
@@ -459,7 +460,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final becomingPaused = !_paused;
     setState(() => _paused = becomingPaused);
     if (becomingPaused && !_gameOver && !_isSolved && _dirty) {
-      _saveGame(successMsg: '已自动保存', failMsg: '自动保存失败'); // 暂停时玩过（动过棋盘）才自动存档，内容与手动存档一致（含计时）
+      _saveGame(silent: true); // 暂停时玩过（动过棋盘）才静默自动存档，内容与手动存档一致（含计时）
     }
   }
 
@@ -510,7 +511,6 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         setState(() {
           _paused = true;
           _gameOver = true;
-          _statusMsg = '错误 $_errors 次，获得 $_lastScore 积分';
         });
         return;
       }
@@ -743,6 +743,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _gameOver = false;
     _isSolved = false;
     _hasGivenUp = false;
+    _statusMsg = '';
     _seconds = 0;
     _startTimer();
     _boardKey.currentState?.syncErrors();
@@ -764,6 +765,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }
 
   Future<void> _doSaveGame({bool silent = false, String successMsg = '存档成功', String failMsg = '存档失败'}) async {
+    if (!silent && mounted) _showStatus('正在保存...');
     try {
       final cagesJson = _puzzle.cages
           ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum, 'op': c.op})
@@ -793,6 +795,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     try {
       _click();
       _hideKeyboard();
+      _loadingSave = true;
+      _showStatus('正在加载...');
       // 等待暂停时自动存档完成，避免读档拿到旧数据
       while (_saveFuture != null) {
         await Future.delayed(const Duration(milliseconds: 100));
@@ -891,6 +895,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       _showStatus('读档成功');
     } catch (_) {
       if (mounted) _showStatus('加载失败');
+    } finally {
+      _loadingSave = false;
     }
   }
 
@@ -1064,7 +1070,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         boardSize: _boardSize,
         score: score,
       );
-      if (mounted) {
+      if (mounted && won) {
         if (res['success'] == true) {
           _showStatus('积分已保存：$score 分');
         } else {
@@ -1072,7 +1078,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         }
       }
     } catch (_) {
-      if (mounted) _showStatus('提交失败');
+      if (mounted && won) _showStatus('提交失败');
     }
     return score;
   }
@@ -1178,9 +1184,19 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   /// 在状态栏显示消息（棋盘上方），4秒后自动清除
   void _showStatus(String msg) {
     setState(() => _statusMsg = msg);
+    _scheduleStatusClear();
+  }
+
+  /// 4秒后清除；若保存/读档请求仍在途则继续等待，避免“正在保存...”和结果之间闪现“已暂停”
+  void _scheduleStatusClear() {
     _statusTimer?.cancel();
     _statusTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted) setState(() => _statusMsg = '');
+      if (!mounted) return;
+      if (_saveFuture != null || _loadingSave) {
+        _scheduleStatusClear();
+        return;
+      }
+      setState(() => _statusMsg = '');
     });
   }
 
