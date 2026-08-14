@@ -4,6 +4,40 @@ import 'package:flutter/services.dart';
 import '../models/sudoku_game.dart';
 import '../services/app_theme.dart';
 
+/// 笼子标签颜色：与笼子线条同色系但更鲜艳，自动适配深浅色模式（参考安卓）
+Color vividCageColor(
+  Color cageColor, {
+  double satBoost = 0.15,
+  double lightBoost = 0.04,
+  double darkBoost = 0.03,
+  double maxSat = 0.45,
+}) {
+  final r = cageColor.r, g = cageColor.g, b = cageColor.b;
+  final max = [r, g, b].reduce((a, b) => a > b ? a : b);
+  final min = [r, g, b].reduce((a, b) => a < b ? a : b);
+  final l = (max + min) / 2;
+  var hue = 0.0;
+  var sat = 0.0;
+  if (max != min) {
+    final d = max - min;
+    sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    hue = (max == r)
+        ? ((g - b) / d + (g < b ? 6 : 0)) / 6
+        : (max == g)
+            ? ((b - r) / d + 2) / 6
+            : ((r - g) / d + 4) / 6;
+  }
+  final sat2 = (sat + satBoost).clamp(0.0, maxSat).toDouble();
+  final l2 = l > 0.5
+      ? (l + lightBoost).clamp(0.0, 0.8).toDouble()
+      : (l + darkBoost).clamp(0.0, 0.5).toDouble();
+  return HSLColor.fromAHSL(1, hue * 360, sat2, l2).toColor();
+}
+
+/// 笼子标签颜色入口：与笼子边框同色系但略鲜艳（浅色/深色自动适配），不偏离笼子颜色
+Color cageLabelColor(BuildContext context) {
+  return vividCageColor(context.colors.textSecondary);
+}
 class SudokuBoard extends StatefulWidget {
   final SudokuPuzzle puzzle;
   final bool noteMode;
@@ -176,6 +210,17 @@ class SudokuBoardState extends State<SudokuBoard> {
         }
 
         final display = val != 0 ? SudokuPuzzle.displayValue(val) : '';
+        // 高亮/选中区域内的细格线加深（参考安卓：四边统一、跳过粗宫线），避免被高亮底色吞掉
+        final hlLine = Color.lerp(colors.boardLine, colors.textSecondary, 0.2)!;
+        bool cellHl(int rr, int cc) {
+          final sr = _selectedRow, sc = _selectedCol;
+          if (sr == null || sc == null) return false;
+          if (rr == sr && cc == sc) return true;
+          return rr == sr || cc == sc ||
+              (rr ~/ _bs == sr ~/ _bs && cc ~/ _bs == sc ~/ _bs);
+        }
+        final rightHl = cellHl(r, c) || (c < _gs - 1 && cellHl(r, c + 1));
+        final bottomHl = cellHl(r, c) || (r < _gs - 1 && cellHl(r + 1, c));
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -189,13 +234,13 @@ class SudokuBoardState extends State<SudokuBoard> {
                 right: c == _gs - 1
                     ? BorderSide.none
                     : BorderSide(
-                        color: (!uniformThin && (c + 1) % _bs == 0) ? colors.boardBorder : colors.boardLine,
+                        color: (!uniformThin && (c + 1) % _bs == 0) ? colors.boardBorder : (rightHl ? hlLine : colors.boardLine),
                         width: (!uniformThin && (c + 1) % _bs == 0) ? 2 : 0.5,
                       ),
                 bottom: r == _gs - 1
                     ? BorderSide.none
                     : BorderSide(
-                        color: (!uniformThin && (r + 1) % _bs == 0) ? colors.boardBorder : colors.boardLine,
+                        color: (!uniformThin && (r + 1) % _bs == 0) ? colors.boardBorder : (bottomHl ? hlLine : colors.boardLine),
                         width: (!uniformThin && (r + 1) % _bs == 0) ? 2 : 0.5,
                       ),
               ),
@@ -232,7 +277,7 @@ class SudokuBoardState extends State<SudokuBoard> {
                 invalidCages: widget.puzzle.invalidCages(),
                 lineColor: colors.boardBorder,
                 badColor: kRed,
-                labelColor: colors.textSecondary,
+                labelColor: cageLabelColor(context),
               ),
             ),
           ),
@@ -325,24 +370,96 @@ class _CagePainter extends CustomPainter {
           }
         }
       }
-    }    // 笼子标签：每个笼子显示 运算符+结果（如 +10、-2、×100、÷3）
+    }    // 笼子标签：运算符用矢量绘制（+ 与 ÷ 一目了然），结果用文本
     for (final cage in puzzle.cages!) {
       int botR = -1, botC = -1;
       for (final idx in cage.cellIndices) {
         final r = idx ~/ gs, c = idx % gs;
         if (r > botR || (r == botR && c > botC)) { botR = r; botC = c; }
       }
-      final tp = TextPainter(
-        text: TextSpan(
-          text: cage.labelText,
-          style: TextStyle(
-            color: labelColor, fontSize: 8, fontWeight: FontWeight.w700,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      // 统一右内缩，避免与棋盘右边框重叠（与安卓端一致）
-      tp.paint(canvas, Offset(botC * cellSize + cellSize - 2 - tp.width, botR * cellSize + cellSize - 9));
+      _paintCageLabel(
+        canvas,
+        cellRight: botC * cellSize + cellSize,
+        cellBottom: botR * cellSize + cellSize,
+        label: cage.labelText,
+        color: labelColor,
+      );
+    }
+  }
+
+
+  /// 绘制笼子标签：运算符（+ - × ÷）用矢量绘制，避免小字号下加号与除号难区分
+  void _paintCageLabel(
+    Canvas canvas, {
+    required double cellRight,
+    required double cellBottom,
+    required String label,
+    required Color color,
+  }) {
+    final op = label.isNotEmpty ? label[0] : '+';
+    final numText = label.length > 1 ? label.substring(1) : '';
+    final opSize = 7.5;
+    final gap = 2.0;
+    final half = 2.8;
+    final diag = half * 0.7071;
+    final strokeW = 1.2;
+    final tp = TextPainter(
+      text: TextSpan(
+        text: numText,
+        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w800),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final rightMargin = 4.0;
+    final rightX = cellRight - rightMargin;
+    final topY = cellBottom - 11;
+    final totalW = opSize + gap + tp.width;
+    final numX = rightX - totalW + opSize + gap;
+    tp.paint(canvas, Offset(numX, topY));
+    final centerY = topY + tp.height / 2;
+    final opCenter = Offset(rightX - totalW + opSize / 2, centerY - 0.7);
+    final p = Paint()
+      ..color = color
+      ..strokeWidth = strokeW;
+    switch (op) {
+      case '-':
+        canvas.drawLine(
+          opCenter + Offset(-half, 0),
+          opCenter + Offset(half, 0),
+          p,
+        );
+      case '×':
+        canvas.drawLine(
+          opCenter + Offset(-diag, -diag),
+          opCenter + Offset(diag, diag),
+          p,
+        );
+        canvas.drawLine(
+          opCenter + Offset(-diag, diag),
+          opCenter + Offset(diag, -diag),
+          p,
+        );
+      case '÷':
+        // 除号：横杠更长、圆点更大，与加号明显区分（参考安卓），且不压住中心数字
+        final divCenter = Offset(opCenter.dx, centerY);
+        canvas.drawLine(
+          divCenter + Offset(-3.7, 0),
+          divCenter + Offset(3.7, 0),
+          p,
+        );
+        canvas.drawCircle(divCenter + Offset(0, -2.5), 0.8, p);
+        canvas.drawCircle(divCenter + Offset(0, 2.5), 0.8, p);
+      default: // '+'
+        canvas.drawLine(
+          opCenter + Offset(-half, 0),
+          opCenter + Offset(half, 0),
+          p,
+        );
+        canvas.drawLine(
+          opCenter + Offset(0, -half),
+          opCenter + Offset(0, half),
+          p,
+        );
     }
   }
 

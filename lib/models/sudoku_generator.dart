@@ -324,18 +324,61 @@ class SudokuGenerator {
   // --- 以下方法保持不变 ---
 
   bool _fillGrid(List<List<int>> grid) {
-    final empty = _findEmpty(grid);
-    if (empty == null) return true;
-    final (r, c) = empty;
-    final nums = List.generate(gridSize, (i) => i + 1)..shuffle(_rng);
-    for (final n in nums) {
-      if (_isValid(grid, r, c, n)) {
-        grid[r][c] = n;
-        if (_fillGrid(grid)) return true;
-        grid[r][c] = 0;
+    // MRV（最少候选优先）+ 位掩码：16×16 大棋盘也能快速生成
+    final gs = gridSize, b = boardSize;
+    final rowMask = List<int>.filled(gs, 0);
+    final colMask = List<int>.filled(gs, 0);
+    final boxMask = List<int>.filled(gs, 0);
+    for (int r = 0; r < gs; r++) {
+      for (int c = 0; c < gs; c++) {
+        final v = grid[r][c];
+        if (v != 0) {
+          final bit = 1 << (v - 1);
+          rowMask[r] |= bit;
+          colMask[c] |= bit;
+          boxMask[(r ~/ b) * b + (c ~/ b)] |= bit;
+        }
       }
     }
-    return false;
+    final full = (1 << gs) - 1;
+
+    bool solve() {
+      int br = -1, bc = -1, bCand = 0;
+      var best = gs + 1;
+      for (int r = 0; r < gs; r++) {
+        for (int c = 0; c < gs; c++) {
+          if (grid[r][c] != 0) continue;
+          final used = rowMask[r] | colMask[c] | boxMask[(r ~/ b) * b + (c ~/ b)];
+          final cand = full & ~used;
+          final n = _popcount(cand);
+          if (n < best) {
+            best = n; br = r; bc = c; bCand = cand;
+            if (n <= 1) break;
+          }
+        }
+        if (best <= 1) break;
+      }
+      if (br < 0) return true;
+      final boxIdx = (br ~/ b) * b + (bc ~/ b);
+      final bits = <int>[];
+      var cand = bCand;
+      while (cand != 0) {
+        final bit = cand & -cand;
+        bits.add(bit);
+        cand ^= bit;
+      }
+      bits.shuffle(_rng); // 随机尝试顺序，保证每次谜题不同
+      for (final bit in bits) {
+        grid[br][bc] = bit.bitLength;
+        rowMask[br] |= bit; colMask[bc] |= bit; boxMask[boxIdx] |= bit;
+        if (solve()) return true;
+        rowMask[br] ^= bit; colMask[bc] ^= bit; boxMask[boxIdx] ^= bit;
+        grid[br][bc] = 0;
+      }
+      return false;
+    }
+
+    return solve();
   }
 
   bool _isValid(List<List<int>> grid, int r, int c, int n) {
@@ -386,7 +429,7 @@ class SudokuGenerator {
     }
   }
 
-  /// 位计数（候选数统计，最多 9 位，循环即可）
+  /// 位计数（候选数统计，循环逐位即可，支持 9×9 与 16×16）
   int _popcount(int x) {
     var c = 0;
     while (x != 0) {

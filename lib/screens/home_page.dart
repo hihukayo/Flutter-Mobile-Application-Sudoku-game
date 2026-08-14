@@ -35,6 +35,8 @@ class _HomePageState extends State<HomePage> {
       child: SizedBox(
         width: 480,
         child: Scaffold(
+          // 键盘弹出时整个页面固定不动：棋盘、操作区、导航栏都不被上推
+          resizeToAvoidBottomInset: false,
           body: IndexedStack(index: _currentIndex, children: pages),
           bottomNavigationBar: NavigationBarTheme(
             data: NavigationBarThemeData(

@@ -98,6 +98,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   Timer? _timer;
   Timer? _statusTimer;
   String _statusMsg = '';
+  bool _bgAutoSaved = false; // 后台自动保存成功后回到前台提示一次
   int _lastScore = 0;
   final List<_UndoEntry> _undoStack = [];
   final List<_UndoEntry> _redoStack = [];
@@ -120,9 +121,27 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      if (!_gameOver && !_isSolved && _seconds > 3) _autoSave();
+    if (state == AppLifecycleState.inactive) {
+      // 被打断（通知栏/来电等）立即静默存档，中断式响应
+      if (!_gameOver && !_isSolved && _dirty) _autoSave();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      // 进入后台：先静默存档，再暂停计时；回到前台保持暂停，由用户手动继续
+      if (!_gameOver && !_isSolved && _dirty) {
+        _autoSave().then((ok) {
+          if (ok && mounted) _bgAutoSaved = true;
+        });
+      }
+      _hideKeyboard();
+      if (mounted && !_paused) {
+        setState(() => _paused = true);
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      // 回到前台：后台自动保存成功则提示一次
+      if (_bgAutoSaved) {
+        _bgAutoSaved = false;
+        if (mounted && !_gameOver) _showStatus('已自动保存');
+      }
     }
   }
 
@@ -244,13 +263,13 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }
 
   /// 退出时自动保存（静默，不阻塞退出）
-  void _autoSave() {
-    if (!_dirty) return;
+  Future<bool> _autoSave() async {
+    if (!_dirty) return false;
     try {
       final cagesJson = _puzzle.cages
           ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum, 'op': c.op})
           .toList();
-      ApiService.saveGame(
+      await ApiService.saveGame(
         username: widget.username,
         boardSize: _boardSize,
         cells: _puzzle.cells,
@@ -263,7 +282,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         killerDifficulty: _killerDifficulty,
         cages: cagesJson,
       );
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   void _tap() => HapticFeedback.lightImpact();
@@ -344,8 +366,20 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     return clues;
   }
 
+  int _genSeq = 0;
+
+  /// 隐藏游戏页软键盘（操作按键/暂停时收起，避免挡住操作区）
+  void _hideKeyboard() {
+    _textFocus.unfocus();
+    if (!kIsWeb) {
+      try {
+        SystemChannels.textInput.invokeMethod('TextInput.hide');
+      } catch (_) {}
+    }
+  }
+
   Future<void> _newGame({bool silent = false}) async {
-    if (_generating) return; // 生成中禁止重复点击
+    if (_generating && !silent) return; // 生成中禁止重复点击；切模式可打断重来
     if (silent) {
       _tap();
       _clickChannel.invokeMethod('vibrate');
@@ -353,10 +387,13 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       if (!_debounce()) return;
       _click();
     }
+    _hideKeyboard();
+    final mySeq = ++_genSeq;
     _generating = true;
     if (mounted) setState(() {});
     // 后台 isolate 生成，避免卡 UI；期间“新局”按钮禁用，连点直接忽略
     try {
+      SudokuPuzzle next;
       if (_isKiller) {
         // 杀手难度正态分布：入门25%、中等50%、困难25%
         final diffRoll = _rng.nextInt(100);
@@ -365,25 +402,29 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
             : diffRoll < 75
             ? '中等'
             : '困难';
-        _puzzle = await compute(generatePuzzleInIsolate, <String, Object>{
+        next = await compute(generatePuzzleInIsolate, <String, Object>{
           'boardSize': 3,
           'killer': true,
           'difficulty': _killerDifficulty,
         });
       } else {
         _pickClueCount();
-        _puzzle = await compute(generatePuzzleInIsolate, <String, Object>{
+        next = await compute(generatePuzzleInIsolate, <String, Object>{
           'boardSize': _boardSize,
           'killer': false,
           'clues': _clueCount,
         });
       }
+      if (!mounted || mySeq != _genSeq) return; // 已被更新的新局请求取代，丢弃旧结果
+      _puzzle = next;
     } catch (e) {
       debugPrint('新局生成失败，使用保底谜题：$e');
       final gen = SudokuGenerator(boardSize: _isKiller ? 3 : _boardSize);
-      _puzzle = _isKiller
+      final next = _isKiller
           ? gen.generateKiller(difficulty: '入门')
           : gen.generate(clues: 36);
+      if (!mounted || mySeq != _genSeq) return;
+      _puzzle = next;
     }
     _generating = false;
     if (!mounted) return;
@@ -414,10 +455,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   void _togglePause() {
     _click();
+    _hideKeyboard();
     final becomingPaused = !_paused;
     setState(() => _paused = becomingPaused);
     if (becomingPaused && !_gameOver && !_isSolved && _dirty) {
-      _saveGame(silent: true); // 暂停时玩过（动过棋盘）才自动存档，内容与手动存档一致（含计时）
+      _saveGame(successMsg: '已自动保存', failMsg: '自动保存失败'); // 暂停时玩过（动过棋盘）才自动存档，内容与手动存档一致（含计时）
     }
   }
 
@@ -713,15 +755,15 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   Future<void>? _saveFuture;
 
   /// 保存当前游戏进度到服务器
-  Future<void> _saveGame({bool silent = false}) {
-    final future = _doSaveGame(silent: silent);
+  Future<void> _saveGame({bool silent = false, String successMsg = '存档成功', String failMsg = '存档失败'}) {
+    final future = _doSaveGame(silent: silent, successMsg: successMsg, failMsg: failMsg);
     _saveFuture = future;
     return future.whenComplete(() {
       if (identical(_saveFuture, future)) _saveFuture = null;
     });
   }
 
-  Future<void> _doSaveGame({required bool silent}) async {
+  Future<void> _doSaveGame({bool silent = false, String successMsg = '存档成功', String failMsg = '存档失败'}) async {
     try {
       final cagesJson = _puzzle.cages
           ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum, 'op': c.op})
@@ -740,9 +782,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         killerDifficulty: _killerDifficulty,
         cages: cagesJson,
       );
-      if (!silent && mounted) _showStatus('存档成功');
+      if (!silent && mounted) _showStatus(successMsg);
     } catch (_) {
-      if (!silent && mounted) _showStatus('存档失败');
+      if (!silent && mounted) _showStatus(failMsg);
     }
   }
 
@@ -750,6 +792,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   Future<void> _loadGame() async {
     try {
       _click();
+      _hideKeyboard();
       // 等待暂停时自动存档完成，避免读档拿到旧数据
       while (_saveFuture != null) {
         await Future.delayed(const Duration(milliseconds: 100));
@@ -1339,22 +1382,37 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                               SizedBox(
                                 width: size,
                                 height: size,
-                                child: SudokuBoard(
-                                  key: _boardKey,
-                                  puzzle: _puzzle,
-                                  noteMode: _noteMode,
-                                  readOnly: _paused || _gameOver,
-                                  onCellChanged: _onCellChanged,
-                                  onNoteChanged: _onNoteChanged,
-                                  onRefresh: () => setState(() {}),
-                                  onRequestInput: () async {
-                                    await setSoftInputMode('nothing');
-                                    _textFocus.requestFocus();
-                                    if (!kIsWeb) {
-                                      await SystemChannels.textInput
-                                          .invokeMethod('TextInput.show');
-                                    }
-                                  },
+                                child: Stack(
+                                  children: [
+                                    SudokuBoard(
+                                      key: _boardKey,
+                                      puzzle: _puzzle,
+                                      noteMode: _noteMode,
+                                      readOnly: _paused || _gameOver,
+                                      onCellChanged: _onCellChanged,
+                                      onNoteChanged: _onNoteChanged,
+                                      onRefresh: () => setState(() {}),
+                                      onRequestInput: () async {
+                                        await setSoftInputMode('nothing');
+                                        _textFocus.requestFocus();
+                                        if (!kIsWeb) {
+                                          await SystemChannels.textInput
+                                              .invokeMethod('TextInput.show');
+                                        }
+                                      },
+                                    ),
+                                    // 新局生成中显示加载遮罩，避免 4×4 生成时看起来像卡死
+                                    if (_generating)
+                                      Positioned.fill(
+                                        child: Container(
+                                          color: context.colors.surface
+                                              .withOpacity(0.5),
+                                          child: const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                               Container(
@@ -1390,19 +1448,19 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     }
     if (_gameOver) {
       return Text(
-        '错误 $_errors 次，游戏结束，用时 ${_formatTime(_seconds)}，获得 $_lastScore 积分',
+        '游戏结束，用时 ${_formatTime(_seconds)}，获得 $_lastScore 积分',
         style: style.copyWith(color: _red),
-      );
-    }
-    if (_paused) {
-      return Text(
-        '已暂停',
-        style: style.copyWith(color: context.colors.textSecondary),
       );
     }
     if (_statusMsg.isNotEmpty) {
       return Text(
         _statusMsg,
+        style: style.copyWith(color: context.colors.textSecondary),
+      );
+    }
+    if (_paused) {
+      return Text(
+        '已暂停',
         style: style.copyWith(color: context.colors.textSecondary),
       );
     }
@@ -1480,6 +1538,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
             children: [
               _iconTextBtn(Icons.cloud_upload, '存档', () {
                 _click();
+                _hideKeyboard();
                 _saveGame();
               }, s),
               Container(
@@ -1506,11 +1565,16 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     bool iconAtEnd = false,
   }) {
     final isDisabled = onTap == null;
-    final color = isDisabled
-        ? context.colors.disabledText
-        : fill
-        ? context.colors.onPrimary
-        : context.colors.textSecondary;
+    final Color color;
+    if (isDisabled) {
+      color = fill
+          ? context.colors.onPrimary.withValues(alpha: 0.55)
+          : context.colors.disabledText;
+    } else if (fill) {
+      color = context.colors.onPrimary;
+    } else {
+      color = context.colors.textSecondary;
+    }
     final textStyle = s.copyWith(
       fontSize: 15,
       fontWeight: fill ? FontWeight.w600 : FontWeight.w500,
@@ -1526,7 +1590,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: fill ? context.colors.primary : Colors.transparent,
+            color: fill
+                ? (isDisabled
+                    ? context.colors.primary.withValues(alpha: 0.45)
+                    : context.colors.primary)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           // 图标+文字整体居中，间距 4（与下排撤销/重置/重做一致）

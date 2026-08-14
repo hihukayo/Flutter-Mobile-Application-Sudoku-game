@@ -144,7 +144,7 @@ const lightAppColors = AppColors(
   divider: kLightGrey,
   inputBg: Color(0xFFF5F7FA),
   selectedBg: kSelectedBg,
-  highlightBg: kHighlightBg,
+  highlightBg: Color(0xFFE7EFFA), // 浅色模式行列/宫高亮：柔和淡蓝底，与细格线和谐
   boardBg: Color(0xFFFFFFFF),
   boardLine: kLightGrey,
   boardBorder: kDarkSlate,
@@ -168,7 +168,7 @@ const darkAppColors = AppColors(
   divider: Color(0xFF232C37),
   inputBg: Color(0xFF1A222C),
   selectedBg: Color(0xFF20304A),
-  highlightBg: Color(0xFF1B2634),
+  highlightBg: Color(0xFF232A3A), // 深色模式高亮：比底色略亮、不泛白
   boardBg: Color(0xFF131A22),
   boardLine: Color(0xFF3A4654),
   boardBorder: Color(0xFF5E6D7E),
