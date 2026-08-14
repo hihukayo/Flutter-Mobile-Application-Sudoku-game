@@ -465,7 +465,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }
 
   String _formatTime(int s) {
-    final h = s ~/ 3600;
+    final h = (s ~/ 3600).toString().padLeft(2, '0');
     final m = ((s % 3600) ~/ 60).toString().padLeft(2, '0');
     final sec = (s % 60).toString().padLeft(2, '0');
     return '$h:$m:$sec';
@@ -1335,6 +1335,26 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                         ),
                       ),
                       const SizedBox(width: 24),
+                      Text(
+                        _isKiller ? _killerDifficulty : _difficulty,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _isKiller
+                              ? _diffKiller(_killerDifficulty)
+                              : _diffColor(_difficulty),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_cluesRemaining()}空',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: context.colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 24),
                       GestureDetector(
                         onTap: (_gameOver || _hasGivenUp) ? null : _togglePause,
                         child: Row(
@@ -1359,26 +1379,6 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      Text(
-                        _isKiller ? _killerDifficulty : _difficulty,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _isKiller
-                              ? _diffKiller(_killerDifficulty)
-                              : _diffColor(_difficulty),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${_cluesRemaining()}空',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: context.colors.textSecondary,
                         ),
                       ),
                     ],

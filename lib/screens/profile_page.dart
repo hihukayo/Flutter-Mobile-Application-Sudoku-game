@@ -62,6 +62,14 @@ class ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  /// 头像垂直中心与右上角设置齿轮齐平
+  double _avatarTop() {
+    final statusBar = MediaQuery.of(context).padding.top;
+    var top = statusBar + 8 + 24 - 44; // 齿轮中心 - 头像半径
+    if (top < 16) top = 16;
+    return top;
+  }
+
   @override
   void dispose() {
     _calendarScroll.dispose();
@@ -165,7 +173,12 @@ class ProfilePageState extends State<ProfilePage> {
             ),
           ),
           ListView(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 24),
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: _avatarTop(),
+              bottom: 24,
+            ),
             children: [
           // ---- 头像 + 用户名 ----
           Center(
@@ -225,11 +238,11 @@ class ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // ---- 完成日历 ----
           _buildCalendarCard(),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
 
           // ---- 退出登录 ----
           SizedBox(
