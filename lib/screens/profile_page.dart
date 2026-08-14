@@ -35,8 +35,7 @@ class ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadAvatar();
-    refresh();
-    _loadContributions();
+    // 统计与贡献日历在切换到“我的”页时由 HomePage 触发 refresh 加载，避免启动并发请求拖慢进入
   }
 
   Future<void> refresh() async {
@@ -207,14 +206,14 @@ class ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Center(
             child: Text(
               widget.username,
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
           // ---- 统计卡片 ----
           Card(

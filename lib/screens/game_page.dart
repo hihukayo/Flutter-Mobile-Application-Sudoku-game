@@ -1334,7 +1334,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                               : context.colors.textSecondary,
                         ),
                       ),
-                      const SizedBox(width: 36),
+                      const SizedBox(width: 16),
                       GestureDetector(
                         onTap: (_gameOver || _hasGivenUp) ? null : _togglePause,
                         child: Row(
