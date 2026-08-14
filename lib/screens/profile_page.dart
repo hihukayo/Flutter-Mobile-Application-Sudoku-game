@@ -152,7 +152,7 @@ class ProfilePageState extends State<ProfilePage> {
       child: Stack(
         children: [
           Positioned(
-            top: 4,
+            top: MediaQuery.of(context).padding.top + 8,
             right: 4,
             child: IconButton(
               icon: Icon(Icons.settings, color: context.colors.textSecondary),
@@ -363,54 +363,100 @@ class ProfilePageState extends State<ProfilePage> {
       children: [
         Text('近 1 年共 $total 局', style: TextStyle(fontSize: 11, color: context.colors.textFaint)),
         const SizedBox(height: 6),
-        SingleChildScrollView(
-          controller: _calendarScroll,
-          scrollDirection: Axis.horizontal,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 月份标签（与格子同步滚动）
-              SizedBox(
-                height: 16,
-                child: Row(
-                  children: [
-                    for (final label in _monthLabels(start, weeks))
-                      Container(
-                        width: _labelWidth(label, pitch, gap),
-                        height: 16,
-                        alignment: Alignment.centerLeft,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 星期竖轴（日 / 二 / 四 / 六），与格子逐行对齐
+            Padding(
+              padding: const EdgeInsets.only(top: 20, right: 6),
+              child: Column(
+                children: [
+                  for (var r = 0; r < 7; r++)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: r < 6 ? 3 : 0),
+                      child: SizedBox(
+                        width: 18,
+                        height: 14,
                         child: Text(
-                          '${label.month}月',
-                          maxLines: 1,
-                          style: TextStyle(fontSize: 11, height: 1.0, color: context.colors.textFaint),
+                          _weekAxisLabel(r),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 10, height: 1.0, color: context.colors.textFaint),
                         ),
                       ),
+                    ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _calendarScroll,
+                scrollDirection: Axis.horizontal,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 月份标签（与格子同步滚动）
+                    SizedBox(
+                      height: 16,
+                      child: Row(
+                        children: [
+                          for (final label in _monthLabels(start, weeks))
+                            Container(
+                              width: _labelWidth(label, pitch, gap),
+                              height: 16,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '${label.month}月',
+                                maxLines: 1,
+                                style: TextStyle(fontSize: 11, height: 1.0, color: context.colors.textFaint),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // 7 行（周日~周六）× 53 列，横向排列，行列间留 3dp 间距
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var w = 0; w < weeks; w++) ...[
+                          Column(
+                            children: [
+                              for (var row = 0; row < 7; row++)
+                                Padding(
+                                  padding: EdgeInsets.only(bottom: row < 6 ? 3 : 0),
+                                  child: _githubCell(start.add(Duration(days: w * 7 + row)), today, dark),
+                                ),
+                            ],
+                          ),
+                          if (w < weeks - 1) const SizedBox(width: gap),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 4),
-              // 7 行（周日~周六）× 53 列，横向排列
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var w = 0; w < weeks; w++) ...[
-                    Column(
-                      children: [
-                        for (var row = 0; row < 7; row++)
-                          _githubCell(start.add(Duration(days: w * 7 + row)), today, dark),
-                      ],
-                    ),
-                    if (w < weeks - 1) const SizedBox(width: gap),
-                  ],
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
   }
 
+  /// 星期竖轴标签：日 / 二 / 四 / 六（GitHub 风格，隔行显示）
+  String _weekAxisLabel(int row) {
+    switch (row) {
+      case 0:
+        return '日';
+      case 2:
+        return '二';
+      case 4:
+        return '四';
+      case 6:
+        return '六';
+      default:
+        return '';
+    }
+  }
   /// 计算 53 周里每个连续月份跨度的周索引（GitHub 月份标签）
   List<({int start, int end, int month})> _monthLabels(DateTime start, int weeks) {
     final labels = <({int start, int end, int month})>[];

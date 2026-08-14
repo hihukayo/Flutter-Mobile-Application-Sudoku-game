@@ -468,8 +468,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final h = s ~/ 3600;
     final m = ((s % 3600) ~/ 60).toString().padLeft(2, '0');
     final sec = (s % 60).toString().padLeft(2, '0');
-    if (h > 0) return '$h:$m:$sec';
-    return '$m:$sec';
+    return '$h:$m:$sec';
   }
 
   void _onCellChanged(int r, int c, int oldVal, int newVal, Set<int> oldNotes) {
