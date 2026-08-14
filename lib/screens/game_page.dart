@@ -465,8 +465,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }
 
   String _formatTime(int s) {
-    final m = (s ~/ 60).toString().padLeft(2, '0');
+    final h = s ~/ 3600;
+    final m = ((s % 3600) ~/ 60).toString().padLeft(2, '0');
     final sec = (s % 60).toString().padLeft(2, '0');
+    if (h > 0) return '$h:$m:$sec';
     return '$m:$sec';
   }
 
