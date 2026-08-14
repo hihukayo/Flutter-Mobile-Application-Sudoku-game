@@ -1334,27 +1334,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                               : context.colors.textSecondary,
                         ),
                       ),
-                      const SizedBox(width: 24),
-                      Text(
-                        _isKiller ? _killerDifficulty : _difficulty,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _isKiller
-                              ? _diffKiller(_killerDifficulty)
-                              : _diffColor(_difficulty),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${_cluesRemaining()}空',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: context.colors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 36),
                       GestureDetector(
                         onTap: (_gameOver || _hasGivenUp) ? null : _togglePause,
                         child: Row(
@@ -1379,6 +1359,26 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Text(
+                        _isKiller ? _killerDifficulty : _difficulty,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _isKiller
+                              ? _diffKiller(_killerDifficulty)
+                              : _diffColor(_difficulty),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_cluesRemaining()}空',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: context.colors.textSecondary,
                         ),
                       ),
                     ],

@@ -62,12 +62,9 @@ class ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  /// 头像垂直中心与右上角设置齿轮齐平
+  /// 头像整体下移：头像最上边与右上角设置齿轮齐平
   double _avatarTop() {
-    final statusBar = MediaQuery.of(context).padding.top;
-    var top = statusBar + 8 + 24 - 44; // 齿轮中心 - 头像半径
-    if (top < 16) top = 16;
-    return top;
+    return MediaQuery.of(context).padding.top + 8;
   }
 
   @override
