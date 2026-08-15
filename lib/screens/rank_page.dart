@@ -15,11 +15,34 @@ class RankPageState extends State<RankPage> {
   List<Map<String, dynamic>> _rankList = [];
   bool _loading = true;
   String _error = '';
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     refresh();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// 数据加载后自动滚动，让当前用户位于列表中央；第一/倒一无法居中时贴边
+  void _centerOnMe() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final myIndex =
+          _rankList.indexWhere((item) => item['username'] == widget.username);
+      if (myIndex < 0) return;
+      const rowHeight = 48.0; // 估算行高（间距+内边距+内容）
+      final viewport = _scrollController.position.viewportDimension;
+      final target =
+          (myIndex * rowHeight - (viewport - rowHeight) / 2)
+              .clamp(0.0, _scrollController.position.maxScrollExtent);
+      _scrollController.jumpTo(target);
+    });
   }
 
   Future<void> refresh() async {
@@ -35,6 +58,7 @@ class RankPageState extends State<RankPage> {
           _rankList = (res['data'] as List).cast<Map<String, dynamic>>();
           _loading = false;
         });
+        _centerOnMe();
       } else {
         setState(() {
           _error = res['message'] ?? '加载失败';
@@ -119,6 +143,7 @@ class RankPageState extends State<RankPage> {
     return RefreshIndicator(
       onRefresh: refresh,
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: _rankList.length,
         itemBuilder: (_, index) {

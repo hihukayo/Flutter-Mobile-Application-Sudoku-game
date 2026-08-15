@@ -32,6 +32,7 @@ class MainActivity : FlutterActivity() {
                 "tone_success" -> playSuccessTone()
                 "play_placement" -> playMp3(call.arguments as? String ?: "")
                 "play_failed" -> playMp3(call.arguments as? String ?: "")
+                "play_mp3" -> playMp3(call.arguments as? String ?: "")
             }
         }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.example.puzzle_game/window")
@@ -124,6 +125,13 @@ class MainActivity : FlutterActivity() {
             val file = java.io.File(path)
             if (!file.exists()) return
             val mp = MediaPlayer()
+            mp.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            mp.setVolume(0.5f, 0.5f) // 音效音量调低，避免刺耳
             mp.setDataSource(file.absolutePath)
             mp.setOnCompletionListener { mp.release() }
             mp.setOnErrorListener { _, _, _ -> mp.release(); true }

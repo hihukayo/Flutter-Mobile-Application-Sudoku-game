@@ -145,6 +145,7 @@ class ApiService {
     required bool isKiller,
     required String killerDifficulty,
     required List<dynamic>? cages,
+    int seed = 0,
   }) async {
     // notes 序列化：Set<int> → List<int>
     final notesJson = notes.map((row) =>
@@ -167,6 +168,7 @@ class ApiService {
         'isKiller': isKiller,
         'killerDifficulty': killerDifficulty,
         'cages': cagesJson,
+        'seed': seed,
       }),
     ));
     return jsonDecode(res.body);
@@ -211,6 +213,7 @@ class ApiService {
     String gameMode = '',
     int boardSize = 3,
     int score = 0,
+    String puzzleKey = '',
   }) async {
     final res = await _guard(http.post(
       Uri.parse('$baseUrl/rank/submit'),
@@ -221,6 +224,7 @@ class ApiService {
         'gameMode': gameMode,
         'boardSize': boardSize,
         'score': score,
+        'puzzleKey': puzzleKey,
       }),
     ));
     return jsonDecode(res.body);

@@ -498,7 +498,10 @@ class SudokuGenerator {
 
 /// 供 compute 后台 isolate 生成谜题使用（参数与返回值均为可发送数据）
 SudokuPuzzle generatePuzzleInIsolate(Map<String, Object> params) {
-  final gen = SudokuGenerator(boardSize: params['boardSize'] as int);
+  final gen = SudokuGenerator(
+    boardSize: params['boardSize'] as int,
+    seed: params['seed'] as int?,
+  );
   if (params['killer'] == true) {
     return gen.generateKiller(difficulty: params['difficulty'] as String);
   }

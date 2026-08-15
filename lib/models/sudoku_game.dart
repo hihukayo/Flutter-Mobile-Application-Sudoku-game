@@ -1,3 +1,5 @@
+import 'sha256.dart';
+
 /// 算数数独的笼子（Cage），op 为运算符：'+' 求和（默认）、'-' 求差、'×' 求积、'÷' 求商
 class Cage {
   final List<int> cellIndices; // 格子在棋盘中的索引 (r * gridSize + c)
@@ -246,6 +248,41 @@ class SudokuPuzzle {
       if (or < r || (or == r && oc > c)) { isFirst = false; break; }
     }
     return (cage.sum, isFirst);
+  }
+
+  /// 谜题指纹：同一局（相同棋盘）只统计一次，与后端 puzzle_key 对应
+  String fingerprint() {
+    final sb = StringBuffer();
+    sb.write(boardSize);
+    sb.write('|');
+    for (int r = 0; r < gridSize; r++) {
+      for (int c = 0; c < gridSize; c++) {
+        sb.write(given[r][c] ? '1' : '0');
+      }
+    }
+    sb.write('|');
+    for (int r = 0; r < gridSize; r++) {
+      for (int c = 0; c < gridSize; c++) {
+        if (r > 0 || c > 0) sb.write(',');
+        sb.write(solution[r][c]);
+      }
+    }
+    if (cages != null) {
+      sb.write('|');
+      for (int i = 0; i < cages!.length; i++) {
+        if (i > 0) sb.write(';');
+        final cage = cages![i];
+        sb.write(cage.op);
+        sb.write(cage.sum);
+        sb.write('[');
+        for (int j = 0; j < cage.cellIndices.length; j++) {
+          if (j > 0) sb.write('_');
+          sb.write(cage.cellIndices[j]);
+        }
+        sb.write(']');
+      }
+    }
+    return sha256Hex(sb.toString());
   }
 
   /// 将数值转换为显示字符：1-9 显示数字，10+ 显示 A-F

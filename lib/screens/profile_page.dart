@@ -69,9 +69,9 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     }
   }
 
-  /// 头像整体下移：头像最上边与右上角设置齿轮齐平
+  /// 头像位置：略低于右上角设置齿轮，避免贴顶
   double _avatarTop() {
-    return MediaQuery.of(context).padding.top + 8;
+    return MediaQuery.of(context).padding.top + 36;
   }
 
   @override
@@ -213,14 +213,14 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Center(
             child: Text(
               widget.username,
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           // ---- 统计卡片 ----
           Card(
@@ -241,11 +241,11 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
           // ---- 完成日历 ----
           _buildCalendarCard(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           // ---- 退出登录 ----
           SizedBox(
@@ -282,8 +282,24 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               icon: Icon(Icons.settings, color: context.colors.textSecondary),
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => SettingsPage(username: widget.username, phone: widget.phone),
+                PageRouteBuilder(
+                  transitionDuration: const Duration(milliseconds: 240),
+                  reverseTransitionDuration: const Duration(milliseconds: 240),
+                  pageBuilder: (_, __, ___) =>
+                      SettingsPage(username: widget.username, phone: widget.phone),
+                  transitionsBuilder: (_, animation, __, child) {
+                    final curved = CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.fastOutSlowIn,
+                    );
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(1, 0),
+                        end: Offset.zero,
+                      ).animate(curved),
+                      child: child,
+                    );
+                  },
                 ),
               ),
             ),

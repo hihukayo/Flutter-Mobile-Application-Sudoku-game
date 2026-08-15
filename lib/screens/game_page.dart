@@ -20,20 +20,9 @@ int _lastClickMs = 0; // 全局防抖时间戳
 const _red = Color(0xFFE53935);
 
 // ---- 难度参数（提示数范围） ----
-const _range3x3 = {
-  '极简': [17, 22],
-  '困难': [23, 28],
-  '中等': [29, 32],
-  '简单': [33, 36],
-};
 const _diffs3x3 = ['极简', '困难', '中等', '简单'];
 const _weights3x3 = [10, 25, 40, 25]; // 正态分布权重
 
-const _range4x4 = {
-  '困难': [70, 80],
-  '中等': [92, 105],
-  '简单': [110, 130],
-};
 const _diffs4x4 = ['困难', '中等', '简单'];
 const _weights4x4 = [25, 50, 25];
 
@@ -101,6 +90,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   bool _loadingSave = false;
   bool _bgAutoSaved = false; // 后台自动保存成功后回到前台提示一次
   int _lastScore = 0;
+  int _currentSeed = 0; // 当前局的种子：复制/输入可复现同一谜题
+  String get _seedLabel => _currentSeed.toRadixString(36).toUpperCase();
   final List<_UndoEntry> _undoStack = [];
   final List<_UndoEntry> _redoStack = [];
   final TextEditingController _textController = TextEditingController();
@@ -116,7 +107,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     } else {
       _initAudioAssets();
     }
-    _newGame();
+    _newGame(silent: true, feedback: false); // 初次进入静音开新局
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkResume());
   }
 
@@ -242,7 +233,13 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   /// 把音频文件从 asset 复制到应用私有目录（原生 MediaPlayer 可访问）
   Future<void> _initAudioAssets() async {
     try {
-      final files = ['failed.mp3', 'Placement.mp3'];
+      final files = [
+        'failed.mp3',
+        'Placement.mp3',
+        'error.mp3',
+        'gamewin.mp3',
+        'gameover.mp3',
+      ];
       for (final name in files) {
         final data = await rootBundle.load('assets/audio/$name');
         await File(
@@ -282,6 +279,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         isKiller: _isKiller,
         killerDifficulty: _killerDifficulty,
         cages: cagesJson,
+        seed: _currentSeed,
       );
       return true;
     } catch (_) {
@@ -320,24 +318,95 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     }
   }
 
-  void _success() {
-    _tap(); // 轻触感
+  /// 播放应用私有目录下的 mp3（原生 MediaPlayer）
+  void _playMp3(String name) {
+    if (kIsWeb) return;
+    _clickChannel.invokeMethod('play_mp3', '${Directory.systemTemp.path}/$name');
+  }
+
+  /// 填入错误数字
+  void _playError() {
     if (kIsWeb) {
-      _webPlayer.play(AssetSource('audio/success.wav'));
+      _webPlayer.play(AssetSource('audio/error.mp3'));
     } else {
-      _clickChannel.invokeMethod('vibrate');
-      _clickChannel.invokeMethod('tone_success');
+      _playMp3('error.mp3');
     }
   }
 
-  /// 按正态分布随机选取提示数个数，避免连续重复
-  int _pickClueCount() {
+  /// 完成胜利
+  void _playWin() {
+    if (kIsWeb) {
+      _webPlayer.play(AssetSource('audio/gamewin.mp3'));
+    } else {
+      _playMp3('gamewin.mp3');
+    }
+  }
+
+  /// 错误次数达上限（游戏结束）
+  void _playGameOver() {
+    if (kIsWeb) {
+      _webPlayer.play(AssetSource('audio/gameover.mp3'));
+    } else {
+      _playMp3('gameover.mp3');
+    }
+  }
+
+  /// 当前模式编号：0=3×3 经典，1=算数数独，2=4×4
+  int _modeCode() {
+    if (_isKiller) return 1;
+    if (_boardSize == 4) return 2;
+    return 0;
+  }
+
+  int _difficultyCode(String label) {
+    switch (label) {
+      case '入门':
+        return 0;
+      case '极简':
+        return 1;
+      case '简单':
+        return 2;
+      case '中等':
+        return 3;
+      default:
+        return 4;
+    }
+  }
+
+  String _difficultyLabel(int code) {
+    switch (code) {
+      case 0:
+        return '入门';
+      case 1:
+        return '极简';
+      case 2:
+        return '简单';
+      case 3:
+        return '中等';
+      default:
+        return '困难';
+    }
+  }
+
+  /// 各难度对应的提示数范围
+  List<int> _clueRange(String diff) {
+    switch (diff) {
+      case '极简':
+        return const [17, 22];
+      case '简单':
+        return _boardSize == 4 ? const [110, 130] : const [33, 36];
+      case '困难':
+        return _boardSize == 4 ? const [70, 80] : const [23, 28];
+      default:
+        return _boardSize == 4 ? const [92, 105] : const [29, 32];
+    }
+  }
+
+  /// 随机挑选难度（经典模式），只决定难度标签，挖空数由种子推导
+  String _pickDifficulty() {
     final is3 = _boardSize == 3;
     final diffs = is3 ? _diffs3x3 : _diffs4x4;
     final weights = is3 ? _weights3x3 : _weights4x4;
-    final ranges = is3 ? _range3x3 : _range4x4;
-
-    // 权重随机选难度
     final total = weights.fold(0, (a, b) => a + b);
     int roll = _rng.nextInt(total);
     String diff = diffs.first;
@@ -348,23 +417,20 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         break;
       }
     }
-
-    final range = ranges[diff]!;
-    int clues = range[0] + _rng.nextInt(range[1] - range[0] + 1);
-
-    // 避免与最近几局相同
-    int tries = 0;
-    while (_lastClueCounts.contains(clues) && tries < 30) {
-      clues = range[0] + _rng.nextInt(range[1] - range[0] + 1);
-      tries++;
-    }
-
-    _lastClueCounts.add(clues);
-    if (_lastClueCounts.length > 3) _lastClueCounts.removeAt(0);
-
     _difficulty = diff;
-    _clueCount = clues;
-    return clues;
+    return diff;
+  }
+
+  /// 杀手难度随机：入门25%、中等50%、困难25%
+  int _rollKillerDifficulty() {
+    final diffRoll = _rng.nextInt(100);
+    final d = diffRoll < 25
+        ? '入门'
+        : diffRoll < 75
+        ? '中等'
+        : '困难';
+    _killerDifficulty = d;
+    return _difficultyCode(d);
   }
 
   int _genSeq = 0;
@@ -379,41 +445,77 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _newGame({bool silent = false}) async {
+  Future<void> _newGame({bool silent = false, bool feedback = true, int? seed}) async {
     if (_generating && !silent) return; // 生成中禁止重复点击；切模式可打断重来
-    if (silent) {
-      _tap();
-      _clickChannel.invokeMethod('vibrate');
-    } else {
-      if (!_debounce()) return;
-      _click();
+    if (feedback) {
+      if (silent) {
+        _tap();
+        _clickChannel.invokeMethod('vibrate');
+      } else {
+        if (!_debounce()) return;
+        _click();
+      }
     }
     _hideKeyboard();
     final mySeq = ++_genSeq;
     _generating = true;
     if (mounted) setState(() {});
-    // 后台 isolate 生成，避免卡 UI；期间“新局”按钮禁用，连点直接忽略
+    // 主线程先决定模式/难度，再切后台生成谜题，避免卡 UI 与连点堆积
     try {
+      final int diffCode;
+      if (seed != null) {
+        // 种子内携带模式与难度：无论当前处于哪种模式，输入相同种子都能还原同一局
+        diffCode = seed & 7;
+        final mode = (seed >> 3) & 3;
+        if (mode != _modeCode()) {
+          _isKiller = mode == 1;
+          _boardSize = mode == 2 ? 4 : 3;
+        }
+        final label = _difficultyLabel(diffCode);
+        _difficulty = label;
+        _killerDifficulty = label;
+      } else {
+        diffCode = _isKiller
+            ? _rollKillerDifficulty()
+            : _difficultyCode(_pickDifficulty());
+      }
+      final String newDiff = _isKiller ? _killerDifficulty : _difficulty;
+      final int genBoardSize = _isKiller ? 3 : _boardSize;
+      int puzzleSeed = seed != null ? seed >> 5 : _rng.nextInt(1 << 26);
+      int clues = _clueCount;
+      if (!_isKiller) {
+        final range = _clueRange(newDiff);
+        clues = range[0] + puzzleSeed % (range[1] - range[0] + 1);
+        if (seed == null) {
+          // 避免与最近几局相同
+          int tries = 0;
+          while (_lastClueCounts.contains(clues) && tries < 30) {
+            puzzleSeed = _rng.nextInt(1 << 26);
+            clues = range[0] + puzzleSeed % (range[1] - range[0] + 1);
+            tries++;
+          }
+          _lastClueCounts.add(clues);
+          if (_lastClueCounts.length > 3) _lastClueCounts.removeAt(0);
+        }
+        _clueCount = clues;
+      }
+      _currentSeed = (puzzleSeed << 5) | (_modeCode() << 3) | diffCode;
+
+      // 后台 isolate 生成，避免卡 UI；期间“新局”按钮禁用，连点直接忽略
       SudokuPuzzle next;
       if (_isKiller) {
-        // 杀手难度正态分布：入门25%、中等50%、困难25%
-        final diffRoll = _rng.nextInt(100);
-        _killerDifficulty = diffRoll < 25
-            ? '入门'
-            : diffRoll < 75
-            ? '中等'
-            : '困难';
         next = await compute(generatePuzzleInIsolate, <String, Object>{
           'boardSize': 3,
           'killer': true,
-          'difficulty': _killerDifficulty,
+          'difficulty': newDiff,
+          'seed': puzzleSeed,
         });
       } else {
-        _pickClueCount();
         next = await compute(generatePuzzleInIsolate, <String, Object>{
-          'boardSize': _boardSize,
+          'boardSize': genBoardSize,
           'killer': false,
-          'clues': _clueCount,
+          'clues': clues,
+          'seed': puzzleSeed,
         });
       }
       if (!mounted || mySeq != _genSeq) return; // 已被更新的新局请求取代，丢弃旧结果
@@ -474,7 +576,6 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   void _onCellChanged(int r, int c, int oldVal, int newVal, Set<int> oldNotes) {
     if (_paused || _gameOver) return;
     _dirty = true;
-    _playPlacement();
     _undoStack.add(
       _UndoEntry(
         r: r,
@@ -499,14 +600,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         if (!kIsWeb) {
           SystemChannels.textInput.invokeMethod('TextInput.hide');
         }
-        if (kIsWeb) {
-          _webPlayer.play(AssetSource('audio/failed.mp3'));
-        } else {
-          _clickChannel.invokeMethod(
-            'play_failed',
-            '${Directory.systemTemp.path}/failed.mp3',
-          );
-        }
+        _playGameOver(); // 达上限只播失败音，不再叠加错误音
         _submitScore(won: false); // 提交失败记录
         _lastScore = _calculateScore();
         setState(() {
@@ -515,7 +609,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         });
         return;
       }
+      _playError(); // 填错播错误音
       setState(() {});
+    } else {
+      _playPlacement(); // 填对/清除播落子音
     }
     // 填满所有格子时自动收起键盘
     if (newVal != 0 && _puzzle.isComplete()) {
@@ -696,13 +793,14 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     if (_paused || _gameOver) return;
     if (_puzzle.isComplete() && _puzzle.isCorrect()) {
       _timer?.cancel();
-      _success();
-      final score = await _submitScore(won: true);
-      _lastScore = score;
+      // 本地立即结算，网络提交放后台，断网时也能马上播音效和显示结果
+      _lastScore = _calculateScore();
       setState(() {
         _paused = true;
         _isSolved = true;
       });
+      _playWin();
+      _submitScore(won: true);
     } else {
       setState(() => _statusMsg = '还有空格未填，请再检查一下吧');
       _statusTimer?.cancel();
@@ -784,6 +882,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         isKiller: _isKiller,
         killerDifficulty: _killerDifficulty,
         cages: cagesJson,
+        seed: _currentSeed,
       );
       if (!silent && mounted) _showStatus(successMsg);
     } catch (_) {
@@ -913,11 +1012,13 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final errors = res['errors'] as int? ?? 0;
     final killerDifficulty = res['killerDifficulty'] as String? ?? '中等';
     final cagesRaw = res['cages'] as List? ?? [];
+    final seed = res['seed'] as int? ?? 0;
 
     final gs = boardSize * boardSize;
     _boardSize = boardSize;
     _isKiller = isKiller;
     _killerDifficulty = killerDifficulty;
+    _currentSeed = seed;
     _puzzle = SudokuPuzzle(boardSize: boardSize);
 
     for (int r = 0; r < gs; r++) {
@@ -1070,6 +1171,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         gameMode: mode,
         boardSize: _boardSize,
         score: score,
+        puzzleKey: _puzzle.fingerprint(),
       );
       if (mounted && won) {
         if (res['success'] == true) {
@@ -1082,6 +1184,20 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       if (mounted && won) _showStatus('提交失败');
     }
     return score;
+  }
+
+  /// 打开种子弹窗：展示当前种子，支持复制与输入复现
+  void _showSeedDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => _SeedDialog(
+        seedLabel: _seedLabel,
+        onApply: (seed) {
+          Navigator.pop(ctx);
+          _newGame(seed: seed);
+        },
+      ),
+    );
   }
 
   void _showModeMenu() {
@@ -1243,12 +1359,25 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         elevation: 0,
         actions: [
           Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: GestureDetector(
+              onTap: () {
+                _hideKeyboard();
+                _showSeedDialog();
+              },
+              child: Icon(
+                Icons.casino,
+                color: context.colors.textFaint,
+                size: 20,
+              ),
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
               onTap: _paused || _gameOver
                   ? null
                   : () {
-                      _click();
                       setState(() => _noteMode = !_noteMode);
                     },
               child: Icon(
@@ -1587,7 +1716,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final Color color;
     if (isDisabled) {
       color = fill
-          ? context.colors.onPrimary.withValues(alpha: 0.55)
+          ? context.colors.onPrimary.withValues(alpha: 0.72)
           : context.colors.disabledText;
     } else if (fill) {
       color = context.colors.onPrimary;
@@ -1611,7 +1740,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           decoration: BoxDecoration(
             color: fill
                 ? (isDisabled
-                    ? context.colors.primary.withValues(alpha: 0.45)
+                    ? context.colors.primary.withValues(alpha: 0.38)
                     : context.colors.primary)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
@@ -1709,4 +1838,187 @@ class _UndoEntry {
     required this.newVal,
     required this.newNotes,
   });
+}
+
+/// 种子弹窗：显示/复制当前种子，或输入种子复现同一局谜题
+class _SeedDialog extends StatefulWidget {
+  final String seedLabel;
+  final ValueChanged<int> onApply;
+
+  const _SeedDialog({required this.seedLabel, required this.onApply});
+
+  @override
+  State<_SeedDialog> createState() => _SeedDialogState();
+}
+
+class _SeedDialogState extends State<_SeedDialog> {
+  final TextEditingController _controller = TextEditingController();
+  bool _copied = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  int? _parse() {
+    final s = _controller.text.trim();
+    if (s.isEmpty) return null;
+    return int.tryParse(s, radix: 36);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: colors.surface,
+      child: SizedBox(
+        width: 300,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '游戏种子',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '相同种子可复现同一局谜题',
+                style: TextStyle(fontSize: 11, color: colors.textFaint),
+              ),
+              const SizedBox(height: 12),
+              // 当前种子 + 复制（复制成功变对勾，不弹提示）；文字整宽居中，按钮浮在右侧
+              Container(
+                width: double.infinity,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: colors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Text(
+                      widget.seedLabel,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary,
+                        letterSpacing: 2,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      child: IconButton(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: widget.seedLabel));
+                          setState(() => _copied = true);
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 38,
+                          height: 46,
+                        ),
+                        icon: Icon(
+                          _copied ? Icons.check : Icons.copy,
+                          size: 18,
+                          color: colors.noteText,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _controller,
+                onChanged: (v) {
+                  final clean = v.toUpperCase().replaceAll(RegExp(r'[^0-9A-Z]'), '');
+                  if (clean != v) {
+                    _controller.value = TextEditingValue(
+                      text: clean,
+                      selection: TextSelection.collapsed(offset: clean.length),
+                    );
+                  }
+                  setState(() {});
+                },
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 14,
+                  letterSpacing: 1.5,
+                ),
+                decoration: InputDecoration(
+                  labelText: '填入种子',
+                  labelStyle: TextStyle(fontSize: 12, color: colors.textFaint),
+                  hintText: '如 ${widget.seedLabel}',
+                  hintStyle: TextStyle(fontSize: 13, color: colors.textFaint),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: colors.divider),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: colors.primary),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        side: BorderSide(color: colors.divider),
+                        foregroundColor: colors.textSecondary,
+                      ),
+                      child: const Text('取消', style: TextStyle(fontSize: 14)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      // 按钮常亮不熄灭：输入无效时点击不生效
+                      onPressed: () {
+                        final s = _parse();
+                        if (s != null) widget.onApply(s);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        backgroundColor: colors.primary,
+                        foregroundColor: colors.onPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text('生成', style: TextStyle(fontSize: 14)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

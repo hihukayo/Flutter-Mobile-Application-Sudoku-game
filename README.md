@@ -12,12 +12,15 @@
   - 难度随机（正态分布），避免连续重复
   - 计时器（24 小时制 HH:MM:SS）、暂停 / 继续（暂停自动存档）、笔记模式、撤销 / 重做
   - 错误计数（3×3 限 3 次，4×4 限 6 次），错误次数不受撤销 / 重做影响
+- **游戏种子**：每局随机生成 36 进制种子，骰子图标一键复制分享；输入种子即可还原同一局，并自动切换到对应的模式 / 难度
 - **云存档**：手动保存 / 加载 + 自动存档，未游玩的新盘不会覆盖旧存档；读档后即视为已玩过，暂停 / 退出自动保存，计时回溯到存档时刻
-- **排行榜**：按总积分排名，显示胜率，用户名旁高亮「我」
-- **完成日历**：「我的」页 GitHub 风格贡献图，53 周 × 7 天方格横向滚动，按天统计完成局数，颜色越绿代表完成越多，最右一格为今天，深浅色自动适配
-- **积分系统**：基础分 × 难度系数 × 时间加成 × 错误惩罚
+- **排行榜**：按总积分排名，显示胜率，用户名旁高亮「我」，进入页面自动滚动将「我」置于居中位置
+- **完成日历**：「我的」页 GitHub 风格贡献图，53 周 × 7 天方格横向滚动，按天统计完成局数，颜色越绿代表完成越多，最右一格为今天，深浅色自动适配；同一谜题（指纹去重）重复完成只计一次
+- **积分系统**：基础分 × 难度系数 × 时间加成 × 错误惩罚；完成时本地立即结算，断网也不卡音效与结果显示
 - **深色模式**：设置中可切换 跟随系统 / 浅色 / 深色并持久化保存，全界面配色自适应，深色下棋盘、笔记、按钮均做可读性优化，切换流畅无卡顿
-- **音效与震动**：按键震动 + 原生音效，300ms 防误触
+- **音效与震动**：按键震动 + 原生音效（填对 / 填错 / 胜利 / 失败），骰子、笔记与导航栏点击静音，初次进入 App 静音
+- **丝滑转场**：设置页从右侧滑入，底部导航与游戏模式切换采用左右翻页式过渡动画，页面状态保持不重建
+- **竖屏锁定**：游戏界面固定竖屏，防止旋转误触
 
 ## 🛠 技术栈
 
@@ -38,7 +41,7 @@
   </tr>
   <tr>
     <td width="320" align="center">音效</td>
-    <td width="320" align="center">Android AudioTrack / MediaPlayer / audioplayers (Web)</td>
+    <td width="320" align="center">原生 MediaPlayer（音量 0.5）/ audioplayers (Web)</td>
   </tr>
 </table>
 
@@ -457,33 +460,33 @@ CREATE TABLE IF NOT EXISTS avatars (
 <table align="center" width="640">
   <tr>
     <th width="213" align="center">操作</th>
-    <th width="213" align="center">Android</th>
-    <th width="214" align="center">Web</th>
+    <th width="213" align="center">音效</th>
+    <th width="214" align="center">说明</th>
   </tr>
   <tr>
-    <td width="213" align="center">按钮点击</td>
-    <td width="213" align="center">80ms 震动 + 1200Hz 正弦波</td>
-    <td width="214" align="center"><code>click.wav</code></td>
+    <td width="213" align="center">填入 / 删除数字</td>
+    <td width="213" align="center"><code>Placement.mp3</code></td>
+    <td width="214" align="center">正确填入时播放</td>
   </tr>
   <tr>
-    <td width="213" align="center">填入/删除数字</td>
-    <td width="213" align="center">震动 + <code>Placement.mp3</code></td>
-    <td width="214" align="center"><code>Placement.mp3</code></td>
+    <td width="213" align="center">填入错误数字</td>
+    <td width="213" align="center"><code>error.mp3</code></td>
+    <td width="214" align="center">震动 + 错误音</td>
   </tr>
   <tr>
     <td width="213" align="center">完成游戏</td>
-    <td width="213" align="center">震动 + 上扬滑音 600→1200Hz</td>
-    <td width="214" align="center"><code>success.wav</code></td>
+    <td width="213" align="center"><code>gamewin.mp3</code></td>
+    <td width="214" align="center">完成提交时播放</td>
   </tr>
   <tr>
     <td width="213" align="center">错误满 3 次</td>
-    <td width="213" align="center">震动 + <code>failed.mp3</code></td>
-    <td width="214" align="center"><code>failed.mp3</code></td>
+    <td width="213" align="center"><code>gameover.mp3</code></td>
+    <td width="214" align="center">只播结束音，不叠加错误音</td>
   </tr>
   <tr>
-    <td width="213" align="center">撤销 / 重做</td>
-    <td width="213" align="center">震动 + 按钮点击音</td>
-    <td width="214" align="center"><code>click.wav</code></td>
+    <td width="213" align="center">骰子 / 笔记 / 导航</td>
+    <td width="213" align="center">静音</td>
+    <td width="214" align="center">点击不发声</td>
   </tr>
 </table>
 
@@ -581,6 +584,13 @@ sudoku/
 ## 📥 下载
 
 最新发布版：[GitHub Releases](https://github.com/hihukayo/Flutter-Mobile-Application-Sudoku-game/releases/latest)（含 arm64-v8a / armeabi-v7a / x86_64 三种安装包）
+
+如需最小安装包，可按架构拆分构建：
+
+```bash
+flutter build apk --release --split-per-abi
+# 输出：build/app/outputs/flutter-apk/app-arm64-v8a-release.apk（约 17MB）
+```
 
 ## 📄 License
 
