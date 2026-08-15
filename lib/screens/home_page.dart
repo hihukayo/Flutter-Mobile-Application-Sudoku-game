@@ -19,6 +19,13 @@ class _HomePageState extends State<HomePage> {
   final _rankKey = GlobalKey<RankPageState>();
   final _profileKey = GlobalKey<ProfilePageState>();
 
+  @override
+  void initState() {
+    super.initState();
+    // 每次登录会话重置续玩提示标记：仅本次登录首次进入游戏页时自动弹一次
+    GamePage.resumePromptShown = false;
+  }
+
   void _switchToGame() {
     setState(() => _currentIndex = 0);
   }

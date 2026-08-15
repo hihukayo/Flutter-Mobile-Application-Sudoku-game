@@ -56,6 +56,10 @@ Color _diffKiller(String diff) {
 class GamePage extends StatefulWidget {
   final String username;
 
+  /// 会话级标记：续玩提示只在每次登录会话的首次进入时弹出一次，
+  /// 切换界面（页面保活/重建）不再重复弹出；登录成功时由 HomePage 重置。
+  static bool resumePromptShown = false;
+
   const GamePage({super.key, required this.username});
 
   @override
@@ -137,8 +141,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     }
   }
 
-  /// 进入游戏时检查是否有存档，提示续玩
+  /// 进入游戏时检查是否有存档，提示续玩（每次登录会话仅首次进入时触发）
   Future<void> _checkResume() async {
+    if (GamePage.resumePromptShown) return;
+    GamePage.resumePromptShown = true;
     try {
       final res = await ApiService.loadGame(username: widget.username);
       if (!mounted || res['success'] != true) return;
@@ -1532,34 +1538,58 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                                 height: size,
                                 child: Stack(
                                   children: [
-                                    SudokuBoard(
-                                      key: _boardKey,
-                                      puzzle: _puzzle,
-                                      noteMode: _noteMode,
-                                      readOnly: _paused || _gameOver,
-                                      onCellChanged: _onCellChanged,
-                                      onNoteChanged: _onNoteChanged,
-                                      onRefresh: () => setState(() {}),
-                                      onRequestInput: () async {
-                                        await setSoftInputMode('nothing');
-                                        _textFocus.requestFocus();
-                                        if (!kIsWeb) {
-                                          await SystemChannels.textInput
-                                              .invokeMethod('TextInput.show');
-                                        }
-                                      },
+                                    // 切换模式/新局时新旧棋盘交叉淡入淡出，避免生硬跳变
+                                    AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 240),
+                                      reverseDuration:
+                                          const Duration(milliseconds: 180),
+                                      switchInCurve: Curves.easeOutCubic,
+                                      switchOutCurve: Curves.easeInCubic,
+                                      transitionBuilder: (child, animation) =>
+                                          FadeTransition(
+                                        opacity: animation,
+                                        child: child,
+                                      ),
+                                      child: KeyedSubtree(
+                                        key: ValueKey(
+                                            'board-${_modeCode()}-$_currentSeed'),
+                                        child: SudokuBoard(
+                                          key: _boardKey,
+                                          puzzle: _puzzle,
+                                          noteMode: _noteMode,
+                                          readOnly: _paused || _gameOver,
+                                          onCellChanged: _onCellChanged,
+                                          onNoteChanged: _onNoteChanged,
+                                          onRefresh: () => setState(() {}),
+                                          onRequestInput: () async {
+                                            await setSoftInputMode('nothing');
+                                            _textFocus.requestFocus();
+                                            if (!kIsWeb) {
+                                              await SystemChannels.textInput
+                                                  .invokeMethod('TextInput.show');
+                                            }
+                                          },
+                                        ),
+                                      ),
                                     ),
-                                    // 新局生成中显示加载遮罩，避免 4×4 生成时看起来像卡死
-                                    if (_generating)
-                                      Positioned.fill(
-                                        child: Container(
-                                          color: context.colors.surface
-                                              .withOpacity(0.5),
-                                          child: const Center(
-                                            child: CircularProgressIndicator(),
+                                    // 新局生成中显示加载遮罩（淡入淡出），避免 4×4 生成时看起来像卡死
+                                    Positioned.fill(
+                                      child: IgnorePointer(
+                                        ignoring: !_generating,
+                                        child: AnimatedOpacity(
+                                          opacity: _generating ? 1 : 0,
+                                          duration:
+                                              const Duration(milliseconds: 200),
+                                          child: Container(
+                                            color: context.colors.surface
+                                                .withOpacity(0.45),
+                                            child: const Center(
+                                              child: CircularProgressIndicator(),
+                                            ),
                                           ),
                                         ),
                                       ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1864,7 +1894,10 @@ class _SeedDialogState extends State<_SeedDialog> {
   int? _parse() {
     final s = _controller.text.trim();
     if (s.isEmpty) return null;
-    return int.tryParse(s, radix: 36);
+    final v = int.tryParse(s, radix: 36);
+    if (v == null) return null;
+    // 与安卓 Int.toIntOrNull(36) 一致：溢出时按 32 位有符号截断
+    return (v & 0xFFFFFFFF).toSigned(32);
   }
 
   @override

@@ -1,13 +1,16 @@
 import 'dart:math';
 import 'sudoku_game.dart';
+import 'kotlin_random.dart';
 
 class SudokuGenerator {
   final int boardSize;
   final Random _rng;
   int get gridSize => boardSize * boardSize;
 
+  /// 有种子时使用与安卓端一致的 Kotlin XorWowRandom 算法，
+  /// 保证同一种子在两端生成相同的棋局；无种子时使用系统随机。
   SudokuGenerator({this.boardSize = 3, int? seed})
-      : _rng = Random(seed);
+      : _rng = seed != null ? KotlinRandom(seed) : Random();
 
   SudokuPuzzle generate({int clues = 30}) {
     final puzzle = SudokuPuzzle(boardSize: boardSize);
