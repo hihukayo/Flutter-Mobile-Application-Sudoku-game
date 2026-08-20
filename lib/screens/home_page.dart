@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'game_page.dart';
 import 'rank_page.dart';
 import 'profile_page.dart';
@@ -16,6 +17,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
+  final List<int> _tabHistory = [];
   final _rankKey = GlobalKey<RankPageState>();
   final _profileKey = GlobalKey<ProfilePageState>();
 
@@ -27,7 +29,34 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _switchToGame() {
-    setState(() => _currentIndex = 0);
+    _switchTab(0);
+  }
+
+  /// tab 切换：压入访问历史，供返回键逐级回退（我的→排行榜→数独）
+  void _switchTab(int i) {
+    if (i == _currentIndex) return;
+    setState(() {
+      _tabHistory.add(_currentIndex);
+      _currentIndex = i;
+    });
+    if (i == 1) _rankKey.currentState?.refresh();
+    if (i == 2) _profileKey.currentState?.refresh();
+  }
+
+  /// 系统返回键：先按 tab 访问栈回退，栈空（数独页）时弹确认退出
+  Future<void> _handleSystemBack() async {
+    if (_tabHistory.isNotEmpty) {
+      setState(() => _currentIndex = _tabHistory.removeLast());
+      return;
+    }
+    final exit = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (_) => const _ExitConfirmDialog(),
+    );
+    if (exit == true && mounted) {
+      SystemNavigator.pop();
+    }
   }
 
   @override
@@ -35,30 +64,37 @@ class _HomePageState extends State<HomePage> {
     final pages = [
       GamePage(username: widget.username),
       RankPage(key: _rankKey, username: widget.username),
-      ProfilePage(key: _profileKey, username: widget.username, phone: widget.phone, onGoToGame: _switchToGame),
+      ProfilePage(
+        key: _profileKey,
+        username: widget.username,
+        phone: widget.phone,
+        onGoToGame: _switchToGame,
+      ),
     ];
 
     return Center(
       child: SizedBox(
         width: 480,
-        child: Scaffold(
-          // 键盘弹出时整个页面固定不动：棋盘、操作区、导航栏都不被上推
-          resizeToAvoidBottomInset: false,
-          body: _SlidePageSwitcher(index: _currentIndex, children: pages),
-          bottomNavigationBar: _NoSoundNavBar(
-            currentIndex: _currentIndex,
-            onTap: (i) {
-              setState(() => _currentIndex = i);
-              if (i == 1) _rankKey.currentState?.refresh();
-              if (i == 2) _profileKey.currentState?.refresh();
-            },
+        child: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleSystemBack();
+          },
+          child: Scaffold(
+            // 键盘弹出时整个页面固定不动：棋盘、操作区、导航栏都不被上推
+            resizeToAvoidBottomInset: false,
+            body: _SlidePageSwitcher(index: _currentIndex, children: pages),
+            bottomNavigationBar: _NoSoundNavBar(
+              currentIndex: _currentIndex,
+              onTap: _switchTab,
+            ),
           ),
         ),
       ),
     );
   }
 }
-
 
 /// 翻页式左右滑动切换（保活各页面状态）：tab 向右点时新页从右往左滑入，向左点则相反
 class _SlidePageSwitcher extends StatefulWidget {
@@ -95,8 +131,10 @@ class _SlidePageSwitcherState extends State<_SlidePageSwitcher>
     if (oldWidget.index != widget.index) {
       _previousIndex = oldWidget.index;
       final forward = widget.index > oldWidget.index;
-      final curved =
-          CurvedAnimation(parent: _controller, curve: Curves.fastOutSlowIn);
+      final curved = CurvedAnimation(
+        parent: _controller,
+        curve: Curves.fastOutSlowIn,
+      );
       _incoming = Tween<Offset>(
         begin: Offset(forward ? 1 : -1, 0),
         end: Offset.zero,
@@ -124,33 +162,38 @@ class _SlidePageSwitcherState extends State<_SlidePageSwitcher>
       final isIncoming = i == widget.index;
       final isOutgoing = animating && i == _previousIndex;
       if (!isIncoming && !isOutgoing) {
-        entries.add(KeyedSubtree(
-          key: ValueKey(i),
-          child: Offstage(offstage: true, child: widget.children[i]),
-        ));
+        entries.add(
+          KeyedSubtree(
+            key: ValueKey(i),
+            child: Offstage(offstage: true, child: widget.children[i]),
+          ),
+        );
       }
     }
     // 旧页面在下、新页面在上，交叉滑动时新页始终在最上层
     if (animating) {
-      entries.add(KeyedSubtree(
-        key: ValueKey(_previousIndex),
-        child: SlideTransition(
-          position: _outgoing,
-          child: widget.children[_previousIndex],
+      entries.add(
+        KeyedSubtree(
+          key: ValueKey(_previousIndex),
+          child: SlideTransition(
+            position: _outgoing,
+            child: widget.children[_previousIndex],
+          ),
         ),
-      ));
+      );
     }
-    entries.add(KeyedSubtree(
-      key: ValueKey(widget.index),
-      child: SlideTransition(
-        position: _incoming,
-        child: widget.children[widget.index],
+    entries.add(
+      KeyedSubtree(
+        key: ValueKey(widget.index),
+        child: SlideTransition(
+          position: _incoming,
+          child: widget.children[widget.index],
+        ),
       ),
-    ));
+    );
     return Stack(fit: StackFit.expand, children: entries);
   }
 }
-
 
 /// 底部导航栏：GestureDetector 实现，无 InkWell，不触发系统点击音/反馈
 class _NoSoundNavBar extends StatelessWidget {
@@ -179,24 +222,12 @@ class _NoSoundNavBar extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: i == currentIndex
-                                ? context.colors.selectedBg
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Icon(
-                            icons[i],
-                            size: 22,
-                            color: i == currentIndex
-                                ? context.colors.primary
-                                : context.colors.textSecondary,
-                          ),
+                        Icon(
+                          icons[i],
+                          size: 22,
+                          color: i == currentIndex
+                              ? context.colors.primary
+                              : context.colors.textSecondary,
                         ),
                         const SizedBox(height: 3),
                         Text(
@@ -217,6 +248,92 @@ class _NoSoundNavBar extends StatelessWidget {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 退出确认对话框：与安卓端一致的样式（图标 + 提示 + 取消/退出）
+class _ExitConfirmDialog extends StatelessWidget {
+  const _ExitConfirmDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 300,
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.logout, size: 40, color: colors.textSecondary),
+            const SizedBox(height: 16),
+            Text(
+              '确定要退出吗？',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '未完成的棋局将自动保存',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: colors.textFaint,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: colors.divider),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      '取消',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: colors.onPrimary,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text('退出', style: TextStyle(fontSize: 15)),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
