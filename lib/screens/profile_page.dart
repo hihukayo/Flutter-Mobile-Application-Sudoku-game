@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -220,7 +220,7 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
 
           // ---- 统计卡片 ----
           Card(
@@ -241,11 +241,10 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-
+          const SizedBox(height: 10),
           // ---- 完成日历 ----
           _buildCalendarCard(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
 
           // ---- 退出登录 ----
           SizedBox(
@@ -397,8 +396,8 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     start = start.subtract(Duration(days: start.weekday % 7));
 
     const weeks = 53;
-    const cell = 14.0;
-    const gap = 3.0;
+    const cell = 15.0;
+    const gap = 2.0;
     const pitch = cell + gap;
     final total = _contribMap.values.fold<int>(0, (sum, c) => sum + c);
 
@@ -446,26 +445,25 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 月份标签（与格子同步滚动）
+                                        // 月份标签：按“每月 1 号所在列”显示，标签行与格子行严格等宽（Stack 定位，不占额外宽度）
                     SizedBox(
                       height: 16,
-                      child: Row(
+                      width: weeks * pitch - gap + 12,
+                      child: Stack(
+                        clipBehavior: Clip.none,
                         children: [
-                          for (final label in _monthLabels(start, weeks))
-                            Container(
-                              width: _labelWidth(label, pitch, gap),
-                              height: 16,
-                              alignment: Alignment.centerLeft,
+                          for (final e in _monthLabelCols(start, weeks).entries)
+                            Positioned(
+                              left: e.key * pitch,
                               child: Text(
-                                '${label.month}月',
+                                '${e.value}月',
                                 maxLines: 1,
                                 style: TextStyle(fontSize: 11, height: 1.0, color: context.colors.textFaint),
                               ),
                             ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
+                    ),const SizedBox(height: 4),
                     // 7 行（周日~周六）× 53 列，横向排列，行列间留 3dp 间距
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -476,12 +474,14 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                               for (var row = 0; row < 7; row++)
                                 Padding(
                                   padding: EdgeInsets.only(bottom: row < 6 ? 3 : 0),
-                                  child: _githubCell(start.add(Duration(days: w * 7 + row)), today, dark),
+                                  child: _githubCell(start.add(Duration(days: w * 7 + row)), today, dark, cell),
                                 ),
                             ],
                           ),
                           if (w < weeks - 1) const SizedBox(width: gap),
+                        
                         ],
+                        const SizedBox(width: 12),
                       ],
                     ),
                   ],
@@ -509,35 +509,27 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
         return '';
     }
   }
-  /// 计算 53 周里每个连续月份跨度的周索引（GitHub 月份标签）
-  List<({int start, int end, int month})> _monthLabels(DateTime start, int weeks) {
-    final labels = <({int start, int end, int month})>[];
-    var w = 0;
-    while (w < weeks) {
-      final m = start.add(Duration(days: w * 7)).month;
-      var end = w;
-      while (end + 1 < weeks && start.add(Duration(days: (end + 1) * 7)).month == m) {
-        end++;
-      }
-      labels.add((start: w, end: end, month: m));
-      w = end + 1;
+  /// 计算“每月 1 号所在列”的月份标签（当前月如 9 月也能显示，与安卓一致）
+  Map<int, int> _monthLabelCols(DateTime start, int weeks) {
+    final map = <int, int>{};
+    final today = DateTime.now();
+    final todayStart = DateTime(today.year, today.month, today.day);
+    var cursor = DateTime(start.year, start.month, 1);
+    while (!cursor.isAfter(todayStart)) {
+      final col = cursor.difference(start).inDays ~/ 7;
+      if (col >= 0 && col < weeks) map[col] = cursor.month;
+      cursor = DateTime(cursor.year, cursor.month + 1, 1);
     }
-    return labels;
-  }
-
-  double _labelWidth(({int start, int end, int month}) label, double pitch, double gap) {
-    final w = (label.end - label.start + 1) * pitch - gap;
-    return w < 34 ? 34 : w;
-  }
-  Widget _githubCell(DateTime day, DateTime today, bool dark) {
+    return map;
+  }  Widget _githubCell(DateTime day, DateTime today, bool dark, double cell) {
     if (day.isAfter(today)) {
-      return const SizedBox(width: 14, height: 14);
+      return SizedBox(width: cell, height: cell);
     }
     final key = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
     final count = _contribMap[key] ?? 0;
     return Container(
-      width: 14,
-      height: 14,
+      width: cell,
+      height: cell,
       decoration: BoxDecoration(
         color: _githubColor(count, dark),
         borderRadius: BorderRadius.circular(2),

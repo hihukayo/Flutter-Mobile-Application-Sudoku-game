@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 import 'dart:math' show Random;
 import 'package:flutter/foundation.dart' show compute, kIsWeb;
@@ -10,6 +10,7 @@ import '../models/sudoku_game.dart';
 import '../models/sudoku_generator.dart';
 import '../widgets/sudoku_board.dart';
 import '../services/api_service.dart';
+import '../services/local_save_store.dart';
 import '../services/app_theme.dart';
 import '../services/window_util.dart';
 
@@ -146,8 +147,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     if (GamePage.resumePromptShown) return;
     GamePage.resumePromptShown = true;
     try {
-      final res = await ApiService.loadGame(username: widget.username);
-      if (!mounted || res['success'] != true) return;
+      final res = await _fetchSave();
+      if (!mounted || res == null || res['success'] != true) return;
       final savedAt = res['savedAt'] ?? '';
 
       final go = await showDialog<bool>(
@@ -875,12 +876,17 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       if (!silent && mounted) _showStatus('本局已结束，无需存档');
       return;
     }
+    final payload = _buildSavePayload();
     if (!silent && mounted) _showStatus('正在保存...');
+    // 1) 本地 SQLite 立即写入：离线也能保存
     try {
-      final cagesJson = _puzzle.cages
-          ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum, 'op': c.op})
-          .toList();
-
+      await LocalSaveStore.save(widget.username, payload, synced: false);
+      if (!silent && mounted) _showStatus(successMsg);
+    } catch (_) {
+      if (!silent && mounted) _showStatus(failMsg);
+    }
+    // 2) 云端同步（后台尽力而为）：失败不影响本地存档
+    try {
       await ApiService.saveGame(
         username: widget.username,
         boardSize: _boardSize,
@@ -892,15 +898,102 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
         errors: _errors,
         isKiller: _isKiller,
         killerDifficulty: _killerDifficulty,
-        cages: cagesJson,
+        cages: payload['cages'] as List<dynamic>?,
         seed: _currentSeed,
       );
-      if (!silent && mounted) _showStatus(successMsg);
+      await LocalSaveStore.markSynced(widget.username);
+    } catch (_) {}
+  }
+
+  /// 构造与后端 /save 请求一致的存档 JSON（本地与云端共用），并写入本地保存时间
+  Map<String, dynamic> _buildSavePayload() {
+    final notesJson = _puzzle.notes
+        .map((row) => row.map((s) => s.toList()).toList())
+        .toList();
+    final cagesJson = _puzzle.cages
+        ?.map((c) => {'cellIndices': c.cellIndices, 'sum': c.sum, 'op': c.op})
+        .toList();
+    return {
+      'username': widget.username,
+      'boardSize': _boardSize,
+      'cells': _puzzle.cells,
+      'notes': notesJson,
+      'solution': _puzzle.solution,
+      'given': _puzzle.given
+          .map((row) => row.map((b) => b ? 1 : 0).toList())
+          .toList(),
+      'seconds': _seconds,
+      'errors': _errors,
+      'isKiller': _isKiller,
+      'killerDifficulty': _killerDifficulty,
+      'cages': cagesJson ?? [],
+      'seed': _currentSeed,
+      'savedAt': _nowText(),
+    };
+  }
+
+  /// 当前本地时间，格式与后端 savedAt 一致
+  String _nowText() {
+    final n = DateTime.now();
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${n.year}-${two(n.month)}-${two(n.day)} ${two(n.hour)}:${two(n.minute)}:${two(n.second)}';
+  }
+
+  /// 解析 savedAt 时间戳，解析失败按 0 处理
+  DateTime _parseSavedAt(String t) {
+    try {
+      return DateTime.parse(t.replaceFirst(' ', 'T'));
     } catch (_) {
-      if (!silent && mounted) _showStatus(failMsg);
+      return DateTime.fromMillisecondsSinceEpoch(0);
     }
   }
 
+  /// 本地 SQLite + 云端合并取最新存档：时间戳较新的赢
+  Future<Map<String, dynamic>?> _fetchSave() async {
+    Map<String, dynamic>? local;
+    try {
+      local = await LocalSaveStore.load(widget.username);
+    } catch (_) {}
+    Map<String, dynamic>? cloud;
+    var cloudOk = false;
+    try {
+      cloud = await ApiService.loadGame(username: widget.username);
+      cloudOk = cloud != null && cloud['success'] == true;
+    } catch (_) {}
+    if (local == null && !cloudOk) return null;
+    if (local == null) {
+      // 只有云端：采用云端，并落到本地一份
+      if (cloud != null) {
+        try {
+          await LocalSaveStore.save(widget.username, cloud, synced: true);
+        } catch (_) {}
+      }
+      return cloud;
+    }
+    if (!cloudOk) {
+      // 只有本地（离线）：采用本地
+      local['success'] = true;
+      return local;
+    }
+    // 云端 vs 本地：保存时间较新的赢
+    final localT = _parseSavedAt(local['savedAt'] ?? '');
+    final cloudT = _parseSavedAt(cloud?['savedAt'] ?? '');
+    if (cloudT.isAfter(localT)) {
+      // 云端更新：覆盖本地
+      try {
+        await LocalSaveStore.save(widget.username, cloud!, synced: true);
+      } catch (_) {}
+      return cloud;
+    } else {
+      // 本地更新或持平：用本地覆盖云端（尽力而为）
+      try {
+        await ApiService.uploadRawSave(local);
+        await LocalSaveStore.markSynced(widget.username);
+      } catch (_) {}
+      local['success'] = true;
+      return local;
+    }
+  }
   /// 从服务器加载最近一次存档
   Future<void> _loadGame() async {
     try {
@@ -912,9 +1005,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       while (_saveFuture != null) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      final res = await ApiService.loadGame(username: widget.username);
+      final res = await _fetchSave();
       if (!mounted) return;
-      if (res['success'] != true) {
+      if (res == null || res['success'] != true) {
         _showStatus('读档失败');
         return;
       }

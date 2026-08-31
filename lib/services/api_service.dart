@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
@@ -48,6 +48,10 @@ class ApiService {
   /// 单次请求总超时（4 秒），避免一直等待
   static Future<http.Response> _guard(Future<http.Response> future) =>
       future.timeout(const Duration(seconds: 4));
+
+  /// 存档/读档等同步操作的总超时（3 秒），更快返回，避免卡顿
+  static Future<http.Response> _guardSync(Future<http.Response> future) =>
+      future.timeout(const Duration(seconds: 3));
 
   // ---- 注册 ----
   static Future<Map<String, dynamic>> register({
@@ -153,7 +157,7 @@ class ApiService {
     ).toList();
     final cagesJson = cages ?? [];
 
-    final res = await _guard(http.post(
+    final res = await _guardSync(http.post(
       Uri.parse('$baseUrl/save'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -170,6 +174,16 @@ class ApiService {
         'cages': cagesJson,
         'seed': seed,
       }),
+    ));
+    return jsonDecode(res.body);
+  }
+
+  /// 用本地存档 JSON 原样覆盖云端（本地时间更新的存档同步到云端）
+  static Future<Map<String, dynamic>> uploadRawSave(Map<String, dynamic> save) async {
+    final res = await _guardSync(http.post(
+      Uri.parse('$baseUrl/save'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(save),
     ));
     return jsonDecode(res.body);
   }
@@ -200,7 +214,7 @@ class ApiService {
   static Future<Map<String, dynamic>> loadGame({
     required String username,
   }) async {
-    final res = await _guard(http.get(
+    final res = await _guardSync(http.get(
       Uri.parse('$baseUrl/load?username=${Uri.encodeComponent(username)}'),
     ));
     return jsonDecode(res.body);

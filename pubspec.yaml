@@ -1,4 +1,4 @@
-name: sudoku_app
+﻿name: sudoku_app
 description: "数独 Sudoku - Flutter 移动应用，支持登录、排行榜、个人中心"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -39,6 +39,8 @@ dependencies:
   shared_preferences: ^2.3.0
   google_fonts: ^6.2.1
   audioplayers: ^6.4.0
+  sqflite: ^2.4.1
+  path: ^1.9.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

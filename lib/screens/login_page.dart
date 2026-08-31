@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/window_util.dart';
@@ -48,14 +48,38 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    final prefs = await SharedPreferences.getInstance();
+    // 同设备缓存比对：账号密码与上次成功登录一致 → 直接本地登入（离线也能登）
+    final cachedUser = prefs.getString('last_login_username');
+    final cachedPhone = prefs.getString('last_login_phone');
+    final cachedPwd = prefs.getString('login_password');
+    if (cachedPwd != null &&
+        cachedPwd.isNotEmpty &&
+        password == cachedPwd &&
+        (account == cachedUser || (account == cachedPhone && cachedPhone != null && cachedPhone.isNotEmpty))) {
+      final u = cachedUser ?? account;
+      final p = cachedPhone ?? '';
+      await prefs.setString('login_username', u);
+      await prefs.setString('login_phone', p);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => HomePage(username: u, phone: p)),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       final res = await ApiService.login(account: account, password: password);
       if (!mounted) return;
       if (res['success'] == true) {
-        final prefs = await SharedPreferences.getInstance();
         await prefs.setString('login_username', res['username'] ?? '');
         await prefs.setString('login_phone', res['phone'] ?? '');
+        // 只保留最新一条成功登录的缓存记录
+        await prefs.setString('login_password', password);
+        await prefs.setString('last_login_username', res['username'] ?? '');
+        await prefs.setString('last_login_phone', res['phone'] ?? '');
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -76,7 +100,6 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) setState(() => _loading = false);
     }
   }
-
   Future<void> _goRegister() async {
     final username = await Navigator.push<String>(
       context,
