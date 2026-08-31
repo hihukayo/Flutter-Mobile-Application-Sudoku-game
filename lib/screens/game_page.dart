@@ -119,11 +119,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive) {
       // 被打断（通知栏/来电等）立即静默存档，中断式响应
-      if (!_gameOver && !_isSolved && _dirty) _autoSave();
+      if (!_gameOver && !_isSolved && !_hasGivenUp && _dirty) _autoSave();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       // 进入后台：先静默存档，再暂停计时；回到前台保持暂停，由用户手动继续
-      if (!_gameOver && !_isSolved && _dirty) {
+      if (!_gameOver && !_isSolved && !_hasGivenUp && _dirty) {
         _autoSave().then((ok) {
           if (ok && mounted) _bgAutoSaved = true;
         });
@@ -262,7 +262,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _timer?.cancel();
     _statusTimer?.cancel();
     if (kIsWeb) _webPlayer.dispose();
-    if (!_gameOver && !_isSolved && _seconds > 3) _autoSave();
+    if (!_gameOver && !_isSolved && !_hasGivenUp && _seconds > 3) _autoSave();
     super.dispose();
   }
 
@@ -567,7 +567,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _hideKeyboard();
     final becomingPaused = !_paused;
     setState(() => _paused = becomingPaused);
-    if (becomingPaused && !_gameOver && !_isSolved && _dirty) {
+    if (becomingPaused && !_gameOver && !_isSolved && !_hasGivenUp && _dirty) {
       _saveGame(silent: true); // 暂停时玩过（动过棋盘）才静默自动存档，内容与手动存档一致（含计时）
     }
   }
@@ -870,6 +870,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   }
 
   Future<void> _doSaveGame({bool silent = false, String successMsg = '存档成功', String failMsg = '存档失败'}) async {
+    // 已完成的棋局不允许再存档，防止读档后直接点完成重复提交成绩
+    if (_isSolved || _gameOver || _hasGivenUp) {
+      if (!silent && mounted) _showStatus('本局已结束，无需存档');
+      return;
+    }
     if (!silent && mounted) _showStatus('正在保存...');
     try {
       final cagesJson = _puzzle.cages
@@ -1059,7 +1064,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
     _seconds = seconds;
     _errors = errors;
-    _isSolved = false;
+    // 读档后若棋盘已全部填对，视为已完成，防止直接点完成再次提交成绩
+    _isSolved = _puzzle.isComplete() && _puzzle.isCorrect();
     _hasGivenUp = false;
     _gameOver = errors >= (boardSize == 3 ? 3 : 6);
     _paused = false;
@@ -1069,7 +1075,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _dirty = true;
     _boardKey = GlobalKey();
 
-    _startTimer();
+    // 已解答或已结束的棋局不再计时
+    if (!_isSolved && !_gameOver) _startTimer();
     if (mounted) setState(() {});
     // 帧渲染后同步棋盘错误状态，确保之前填错的格子恢复红色
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1615,6 +1622,13 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   Widget _buildStatus() {
     final style = TextStyle(fontSize: 13, fontWeight: FontWeight.w500);
+    // 临时提示（保存/读档等结果）优先显示，避免被“解答正确”等常驻文字覆盖
+    if (_statusMsg.isNotEmpty) {
+      return Text(
+        _statusMsg,
+        style: style.copyWith(color: context.colors.textSecondary),
+      );
+    }
     if (_isSolved) {
       return Text(
         '解答正确！用时 ${_formatTime(_seconds)}，获得 $_lastScore 积分',
@@ -1628,12 +1642,6 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       return Text(
         '游戏结束，用时 ${_formatTime(_seconds)}，获得 $_lastScore 积分',
         style: style.copyWith(color: _red),
-      );
-    }
-    if (_statusMsg.isNotEmpty) {
-      return Text(
-        _statusMsg,
-        style: style.copyWith(color: context.colors.textSecondary),
       );
     }
     if (_paused) {
@@ -1714,11 +1722,13 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _iconTextBtn(Icons.cloud_upload, '存档', () {
-                _click();
-                _hideKeyboard();
-                _saveGame();
-              }, s),
+              _iconTextBtn(Icons.cloud_upload, '存档', (_isSolved || _gameOver || _hasGivenUp)
+                    ? null
+                    : () {
+                        _click();
+                        _hideKeyboard();
+                        _saveGame();
+                      }, s),
               Container(
                 width: 1,
                 height: 24,
