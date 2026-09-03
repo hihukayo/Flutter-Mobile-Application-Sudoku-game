@@ -1,5 +1,6 @@
-﻿import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -439,52 +440,69 @@ class ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                controller: _calendarScroll,
-                scrollDirection: Axis.horizontal,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                                        // 月份标签：按“每月 1 号所在列”显示，标签行与格子行严格等宽（Stack 定位，不占额外宽度）
-                    SizedBox(
-                      height: 16,
-                      width: weeks * pitch - gap + 12,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          for (final e in _monthLabelCols(start, weeks).entries)
-                            Positioned(
-                              left: e.key * pitch,
-                              child: Text(
-                                '${e.value}月',
-                                maxLines: 1,
-                                style: TextStyle(fontSize: 11, height: 1.0, color: context.colors.textFaint),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),const SizedBox(height: 4),
-                    // 7 行（周日~周六）× 53 列，横向排列，行列间留 3dp 间距
-                    Row(
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  scrollbars: false,
+                  dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.stylus,
+                    PointerDeviceKind.trackpad,
+                    PointerDeviceKind.invertedStylus,
+                  },
+                ),
+                child: Scrollbar(
+                  controller: _calendarScroll,
+                  scrollbarOrientation: ScrollbarOrientation.bottom,
+                  thumbVisibility: kIsWeb,
+                  child: SingleChildScrollView(
+                    controller: _calendarScroll,
+                    scrollDirection: Axis.horizontal,
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (var w = 0; w < weeks; w++) ...[
-                          Column(
+                                            // 月份标签：按“每月 1 号所在列”显示，标签行与格子行严格等宽（Stack 定位，不占额外宽度）
+                        SizedBox(
+                          height: 16,
+                          width: weeks * pitch - gap + 12,
+                          child: Stack(
+                            clipBehavior: Clip.none,
                             children: [
-                              for (var row = 0; row < 7; row++)
-                                Padding(
-                                  padding: EdgeInsets.only(bottom: row < 6 ? 3 : 0),
-                                  child: _githubCell(start.add(Duration(days: w * 7 + row)), today, dark, cell),
+                              for (final e in _monthLabelCols(start, weeks).entries)
+                                Positioned(
+                                  left: e.key * pitch,
+                                  child: Text(
+                                    '${e.value}月',
+                                    maxLines: 1,
+                                    style: TextStyle(fontSize: 11, height: 1.0, color: context.colors.textFaint),
+                                  ),
                                 ),
                             ],
                           ),
-                          if (w < weeks - 1) const SizedBox(width: gap),
-                        
-                        ],
-                        const SizedBox(width: 12),
+                        ),const SizedBox(height: 4),
+                        // 7 行（周日~周六）× 53 列，横向排列，行列间留 3dp 间距
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (var w = 0; w < weeks; w++) ...[
+                              Column(
+                                children: [
+                                  for (var row = 0; row < 7; row++)
+                                    Padding(
+                                      padding: EdgeInsets.only(bottom: row < 6 ? 3 : 0),
+                                      child: _githubCell(start.add(Duration(days: w * 7 + row)), today, dark, cell),
+                                    ),
+                                ],
+                              ),
+                              if (w < weeks - 1) const SizedBox(width: gap),
+                            
+                            ],
+                            const SizedBox(width: 12),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

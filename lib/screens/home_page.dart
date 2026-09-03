@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'game_page.dart';
@@ -131,6 +132,13 @@ class _SlidePageSwitcherState extends State<_SlidePageSwitcher>
     if (oldWidget.index != widget.index) {
       _previousIndex = oldWidget.index;
       final forward = widget.index > oldWidget.index;
+      // Web端不需要翻页滑动动画：直接瞬时切换，避免掉帧时分屏/停顿
+      if (kIsWeb) {
+        _incoming = const AlwaysStoppedAnimation(Offset.zero);
+        _outgoing = const AlwaysStoppedAnimation(Offset.zero);
+        _controller.value = 0;
+        return;
+      }
       final curved = CurvedAnimation(
         parent: _controller,
         curve: Curves.fastOutSlowIn,
@@ -155,43 +163,53 @@ class _SlidePageSwitcherState extends State<_SlidePageSwitcher>
 
   @override
   Widget build(BuildContext context) {
-    final animating = _controller.isAnimating;
-    final entries = <Widget>[];
-    // 非参与动画的页面保持挂载（离屏保活），保证游戏计时等状态不丢
-    for (int i = 0; i < widget.children.length; i++) {
-      final isIncoming = i == widget.index;
-      final isOutgoing = animating && i == _previousIndex;
-      if (!isIncoming && !isOutgoing) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        // 动画是否进行中；AnimatedBuilder 保证动画结束后自动重建并移除旧页
+        final animating = _controller.isAnimating;
+        final entries = <Widget>[];
+        // 非参与动画的页面保持挂载（离屏保活），保证游戏计时等状态不丢
+        for (int i = 0; i < widget.children.length; i++) {
+          final isIncoming = i == widget.index;
+          final isOutgoing = animating && i == _previousIndex;
+          if (!isIncoming && !isOutgoing) {
+            entries.add(
+              KeyedSubtree(
+                key: ValueKey(i),
+                child: Offstage(offstage: true, child: widget.children[i]),
+              ),
+            );
+          }
+        }
+        // 旧页面在下、新页面在上，交叉滑动时新页始终在最上层
+        if (animating) {
+          entries.add(
+            KeyedSubtree(
+              key: ValueKey(_previousIndex),
+              child: SlideTransition(
+                position: _outgoing,
+                child: widget.children[_previousIndex],
+              ),
+            ),
+          );
+        }
         entries.add(
           KeyedSubtree(
-            key: ValueKey(i),
-            child: Offstage(offstage: true, child: widget.children[i]),
+            key: ValueKey(widget.index),
+            child: SlideTransition(
+              position: _incoming,
+              child: widget.children[widget.index],
+            ),
           ),
         );
-      }
-    }
-    // 旧页面在下、新页面在上，交叉滑动时新页始终在最上层
-    if (animating) {
-      entries.add(
-        KeyedSubtree(
-          key: ValueKey(_previousIndex),
-          child: SlideTransition(
-            position: _outgoing,
-            child: widget.children[_previousIndex],
-          ),
-        ),
-      );
-    }
-    entries.add(
-      KeyedSubtree(
-        key: ValueKey(widget.index),
-        child: SlideTransition(
-          position: _incoming,
-          child: widget.children[widget.index],
-        ),
-      ),
+        return Stack(
+          fit: StackFit.expand,
+          clipBehavior: Clip.hardEdge,
+          children: entries,
+        );
+      },
     );
-    return Stack(fit: StackFit.expand, children: entries);
   }
 }
 
