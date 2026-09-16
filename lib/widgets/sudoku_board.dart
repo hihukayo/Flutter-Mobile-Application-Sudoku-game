@@ -175,6 +175,8 @@ class SudokuBoardState extends State<SudokuBoard> {
 
   Widget _buildRegularGrid(TextStyle textStyle, double fontSize, double noteSize, {bool uniformThin = false}) {
     final colors = context.colors;
+    // 算数数独：宫线仅比格子线略深一点点，保持淡雅，不与笼子线（2dp）争色
+    final killerBoxLine = Color.lerp(colors.boardLine, colors.textSecondary, 0.3)!;
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _gs * _gs,
@@ -195,7 +197,11 @@ class SudokuBoardState extends State<SudokuBoard> {
 
         Color? textColor;
         FontWeight fontWeight;
-        if (isGiven) {
+        if (isGiven && widget.puzzle.isKiller) {
+          // 算数数独提示数与笼子标签同色系，比主文字更柔和
+          textColor = cageLabelColor(context);
+          fontWeight = FontWeight.w700;
+        } else if (isGiven) {
           textColor = colors.textPrimary;
           fontWeight = FontWeight.w700;
         } else if (val == 0) {
@@ -234,14 +240,18 @@ class SudokuBoardState extends State<SudokuBoard> {
                 right: c == _gs - 1
                     ? BorderSide.none
                     : BorderSide(
-                        color: (!uniformThin && (c + 1) % _bs == 0) ? colors.boardBorder : (rightHl ? hlLine : colors.boardLine),
-                        width: (!uniformThin && (c + 1) % _bs == 0) ? 2 : 0.5,
+                        color: (c + 1) % _bs != 0
+                            ? (rightHl ? hlLine : colors.boardLine)
+                            : (uniformThin ? killerBoxLine : colors.boardBorder),
+                        width: (c + 1) % _bs != 0 ? 0.5 : (uniformThin ? 0.8 : 2),
                       ),
                 bottom: r == _gs - 1
                     ? BorderSide.none
                     : BorderSide(
-                        color: (!uniformThin && (r + 1) % _bs == 0) ? colors.boardBorder : (bottomHl ? hlLine : colors.boardLine),
-                        width: (!uniformThin && (r + 1) % _bs == 0) ? 2 : 0.5,
+                        color: (r + 1) % _bs != 0
+                            ? (bottomHl ? hlLine : colors.boardLine)
+                            : (uniformThin ? killerBoxLine : colors.boardBorder),
+                        width: (r + 1) % _bs != 0 ? 0.5 : (uniformThin ? 0.8 : 2),
                       ),
               ),
             ),

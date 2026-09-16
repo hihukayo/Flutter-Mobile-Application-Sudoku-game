@@ -8,7 +8,7 @@
 - **个人头像**：相册选图，服务器持久化存储，换设备可恢复
 - **数独游戏**
   - 3×3 经典九宫格 & 4×4 十六进制数独
-  - 算数数独（3×3）：笼子（Cage）+ 运算符（+ - × ÷），支持异形笼子
+  - 算数数独（3×3）：笼子（Cage）+ 运算符（+ - × ÷），支持异形笼子；简单 / 中等带提示数，困难无提示
   - 难度随机（正态分布），避免连续重复
   - 计时器（24 小时制 HH:MM:SS）、暂停 / 继续（暂停自动存档）、笔记模式、撤销 / 重做
   - 错误计数（3×3 限 3 次，4×4 限 6 次），错误次数不受撤销 / 重做影响
@@ -385,7 +385,7 @@ CREATE TABLE IF NOT EXISTS avatars (
     <th width="320" align="center">系数</th>
   </tr>
   <tr>
-    <td width="320" align="center">简单 / 入门</td>
+    <td width="320" align="center">简单</td>
     <td width="320" align="center">1.0</td>
   </tr>
   <tr>
@@ -413,6 +413,8 @@ CREATE TABLE IF NOT EXISTS avatars (
 3. 2 格笼以除法为主（65%），3/4 格笼以加法为主（90%，乘积不超过 50），不生成 5 格笼
 4. 试错机制：不逐格对照答案，允许试错
 5. 错误满 3 次游戏结束
+6. 提示数：简单随机给 12~18 个、中等 6~11 个，困难不给；提示格来自答案、加粗显示且不可编辑，数量与位置由种子推导，同难度 + 同种子稳定复现，并按宫轮流分散不扎堆
+7. 棋盘：宫界线比普通格线略深、略粗，便于辨认宫，同时与笼子线区分
 
 难度分布（正态随机）：
 
@@ -428,7 +430,7 @@ CREATE TABLE IF NOT EXISTS avatars (
     <th width="110" align="center">5格</th>
   </tr>
   <tr>
-    <td width="106" align="center">🟢 入门</td>
+    <td width="106" align="center">🟢 简单</td>
     <td width="106" align="center">~25%</td>
     <td width="106" align="center">60%</td>
     <td width="106" align="center">35%</td>

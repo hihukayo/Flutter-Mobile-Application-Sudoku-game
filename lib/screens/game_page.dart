@@ -45,7 +45,7 @@ Color _diffColor(String diff) {
 
 Color _diffKiller(String diff) {
   switch (diff) {
-    case '入门':
+    case '简单':
       return const Color(0xFF2E7D32);
     case '困难':
       return const Color(0xFFC62828);
@@ -383,7 +383,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   String _difficultyLabel(int code) {
     switch (code) {
       case 0:
-        return '入门';
+        return '简单';
       case 1:
         return '极简';
       case 2:
@@ -428,11 +428,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     return diff;
   }
 
-  /// 杀手难度随机：入门25%、中等50%、困难25%
+  /// 算数难度随机：简单25%、中等50%、困难25%
   int _rollKillerDifficulty() {
     final diffRoll = _rng.nextInt(100);
     final d = diffRoll < 25
-        ? '入门'
+        ? '简单'
         : diffRoll < 75
         ? '中等'
         : '困难';
@@ -531,7 +531,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       debugPrint('新局生成失败，使用保底谜题：$e');
       final gen = SudokuGenerator(boardSize: _isKiller ? 3 : _boardSize);
       final next = _isKiller
-          ? gen.generateKiller(difficulty: '入门')
+          ? gen.generateKiller(difficulty: '简单')
           : gen.generate(clues: 36);
       if (!mounted || mySeq != _genSeq) return;
       _puzzle = next;
@@ -1114,7 +1114,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     final givenRaw = res['given'] as List;
     final seconds = res['seconds'] as int? ?? 0;
     final errors = res['errors'] as int? ?? 0;
-    final killerDifficulty = res['killerDifficulty'] as String? ?? '中等';
+    var killerDifficulty = res['killerDifficulty'] as String? ?? '中等';
+    // 兼容旧存档：入门难度已更名为简单
+    if (killerDifficulty == '入门') killerDifficulty = '简单';
     final cagesRaw = res['cages'] as List? ?? [];
     final seed = res['seed'] as int? ?? 0;
 
@@ -1194,6 +1196,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     }
     if (_isKiller) {
       switch (_killerDifficulty) {
+        case '简单':
         case '入门':
           return 2400;
         case '中等':

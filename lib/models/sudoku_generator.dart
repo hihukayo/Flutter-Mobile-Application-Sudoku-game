@@ -32,34 +32,86 @@ class SudokuGenerator {
   /// 难度对应的笼子大小概率 [2格, 3格, 4格, 5格]
   List<int> _cageProbs(String difficulty) {
     switch (difficulty) {
-      case '入门': return [60, 35, 5, 0];  // 无5格，4格极少
+      case '简单': return [60, 35, 5, 0];  // 无5格，4格极少
       case '困难': return [30, 30, 40, 0];
       default: return [40, 35, 25, 0]; // 中等
+    }
+  }
+
+  /// 各难度的提示数（预先给定的格数）范围：简单最多、中等居中、困难不给提示
+  List<int> _hintRange(String difficulty) {
+    switch (difficulty) {
+      case '简单': return [12, 18];
+      case '中等': return [6, 11];
+      default: return [0, 0];
+    }
+  }
+
+  /// 按难度补充提示数：数量随机，并轮流分散到各个宫内，避免扎堆（同种子同提示，与安卓端一致）
+  void _applyHints(SudokuPuzzle puzzle, String difficulty) {
+    final range = _hintRange(difficulty);
+    if (range[1] <= 0) return;
+    final total = gridSize * gridSize;
+    final count = (range[0] + _rng.nextInt(range[1] - range[0] + 1)).clamp(0, total);
+    // 每个宫内的格子各自随机打乱
+    final boxCells = <List<int>>[];
+    for (int br = 0; br < gridSize; br += boardSize) {
+      for (int bc = 0; bc < gridSize; bc += boardSize) {
+        final cells = <int>[];
+        for (int r = br; r < br + boardSize; r++) {
+          for (int c = bc; c < bc + boardSize; c++) {
+            cells.add(r * gridSize + c);
+          }
+        }
+        cells.shuffle(_rng);
+        boxCells.add(cells);
+      }
+    }
+    // 宫的访问顺序也随机，再轮流从各宫取格，使提示分散而不集中在一处
+    final boxOrder = List<int>.generate(boxCells.length, (i) => i)..shuffle(_rng);
+    int placed = 0;
+    int round = 0;
+    while (placed < count && round < boardSize * boardSize) {
+      for (final bi in boxOrder) {
+        if (placed >= count) break;
+        if (round >= boxCells[bi].length) continue;
+        final idx = boxCells[bi][round];
+        final r = idx ~/ gridSize;
+        final c = idx % gridSize;
+        puzzle.cells[r][c] = puzzle.solution[r][c];
+        puzzle.given[r][c] = true;
+        placed++;
+      }
+      round++;
     }
   }
 
   /// 生成算数数独
   SudokuPuzzle generateKiller({String difficulty = '中等'}) {
     assert(boardSize == 3, '算数数独仅支持 3×3');
+    // 兼容旧标签：入门已更名为简单
+    final diff = difficulty == '入门' ? '简单' : difficulty;
     const maxAttempts = 50;
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
       final puzzle = SudokuPuzzle(boardSize: boardSize);
       _fillGrid(puzzle.solution);
 
-      if (_generateCages(puzzle, difficulty)) {
-        puzzle.killerDifficulty = difficulty;
-        // 清空所有格子（算数数独不给任何数字）
+      if (_generateCages(puzzle, diff)) {
+        puzzle.killerDifficulty = diff;
+        // 先清空所有格子
         for (int r = 0; r < gridSize; r++) {
           for (int c = 0; c < gridSize; c++) {
             puzzle.cells[r][c] = 0;
             puzzle.given[r][c] = false;
           }
         }
+        // 简单/中等补充提示数，困难保持无提示
+        _applyHints(puzzle, diff);
         return puzzle;
       }
     }
     // 保底：返回一个简单难度生成的谜题
-    return generateKiller(difficulty: '入门');
+    return generateKiller(difficulty: '简单');
   }
 
   /// 快速生成笼子划分（迭代 + 异形支持，超时则重试）
@@ -72,7 +124,7 @@ class SudokuGenerator {
     for (int attempt = 0; attempt < 30; attempt++) {
       final assigned = List.filled(total, -1);
       final cages = <List<int>>[];
-      int count4 = 0; // 4格笼子计数（入门难度限制2~3个）
+      int count4 = 0; // 4格笼子计数（简单难度限制2~3个）
 
       for (int i = 0; i < total; i++) {
         if (assigned[i] != -1) continue;
@@ -161,8 +213,8 @@ class SudokuGenerator {
     final remaining = assigned.where((a) => a == -1).length;
     if (remaining < 2) return remaining;
 
-    // 入门难度限制 4 格笼子不超过 3 个
-    final max4 = difficulty == '入门' ? (count4 >= 3 ? 0 : 3) : 99;
+    // 简单难度限制 4 格笼子不超过 3 个
+    final max4 = difficulty == '简单' ? (count4 >= 3 ? 0 : 3) : 99;
 
     // 按概率选取大小
     for (int attempt = 0; attempt < 20; attempt++) {
